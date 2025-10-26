@@ -1,5 +1,5 @@
 @{
-    ModuleVersion        = '0.1.7'
+    ModuleVersion        = '0.1.8'
     GUID                 = 'a61ffd6a-dac4-4de4-a830-0e58a0535eaa'
     Author               = 'Nigel Tatschner'
     CompanyName          = 'TheCodeSaiyan'
@@ -8,7 +8,7 @@
     CompatiblePSEditions = @('Desktop', 'Core')
     PowerShellVersion    = '5.1'
     RootModule           = 'tcs.core.psm1'
-    FunctionsToExport    = @('ConvertTo-CamelCase', 'New-DynamicParameter', 'Set-ModuleConfig')
+    FunctionsToExport    = *
     CmdletsToExport      = @()
     VariablesToExport    = @()
     AliasesToExport      = @()
