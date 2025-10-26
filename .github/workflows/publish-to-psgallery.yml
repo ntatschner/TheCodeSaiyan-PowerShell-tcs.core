@@ -214,21 +214,28 @@ jobs:
     - name: Notification
       shell: pwsh
       run: |
-        $validateResult = "${{ needs.validate.result }}"
-        $publishResult = "${{ needs.publish.result }}"
-        $shouldPublish = "${{ needs.validate.outputs.should_publish }}"
-        $version = "${{ needs.validate.outputs.module_version }}"
+        # Get workflow results with proper null handling
+        $validateResult = '${{ needs.validate.result }}'
+        $publishResult = '${{ needs.publish.result }}'
+        $shouldPublish = '${{ needs.validate.outputs.should_publish }}'
+        $version = '${{ needs.validate.outputs.module_version }}'
         
         Write-Host "=== Workflow Results ===" -ForegroundColor Cyan
-        Write-Host "Validation: $validateResult" -ForegroundColor $(if($validateResult -eq 'success'){'Green'}else{'Red'})
+        
+        # Safely determine colors
+        $validateColor = if ($validateResult -eq 'success') { 'Green' } else { 'Red' }
+        Write-Host "Validation: $validateResult" -ForegroundColor $validateColor
         
         if ($shouldPublish -eq 'true') {
-          Write-Host "Publication: $publishResult" -ForegroundColor $(if($publishResult -eq 'success'){'Green'}else{'Red'})
+          $publishColor = if ($publishResult -eq 'success') { 'Green' } else { 'Red' }
+          Write-Host "Publication: $publishResult" -ForegroundColor $publishColor
           
           if ($publishResult -eq 'success') {
             Write-Host "🎉 Module ${{ env.MODULE_NAME }} v$version published successfully!" -ForegroundColor Green
-          } else {
+          } elseif ($publishResult -eq 'failure') {
             Write-Host "❌ Publication failed" -ForegroundColor Red
+          } else {
+            Write-Host "⚠️ Publication status: $publishResult" -ForegroundColor Yellow
           }
         } else {
           Write-Host "Publication: Skipped (version already exists)" -ForegroundColor Yellow
