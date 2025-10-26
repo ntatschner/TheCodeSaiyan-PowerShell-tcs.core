@@ -8,7 +8,7 @@
     CompatiblePSEditions = @('Desktop', 'Core')
     PowerShellVersion    = '5.1'
     RootModule           = 'tcs.core.psm1'
-    FunctionsToExport    = *
+    FunctionsToExport    = '*'
     CmdletsToExport      = @()
     VariablesToExport    = @()
     AliasesToExport      = @()
