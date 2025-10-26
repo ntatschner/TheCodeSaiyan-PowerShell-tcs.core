@@ -51,10 +51,16 @@ jobs:
           Write-Host "Description: $($manifest.Description)" -ForegroundColor Cyan
           
           # Check required fields for PowerShell Gallery
-          $requiredFields = @('ModuleVersion', 'Description', 'Author')
-          foreach ($field in $requiredFields) {
-            if (-not $manifest.$field) {
-              throw "Required field '$field' is missing or empty"
+          # Note: Test-ModuleManifest returns properties with different names
+          $checks = @{
+            'Version' = $manifest.Version
+            'Description' = $manifest.Description  
+            'Author' = $manifest.Author
+          }
+          
+          foreach ($check in $checks.GetEnumerator()) {
+            if (-not $check.Value -or [string]::IsNullOrWhiteSpace($check.Value)) {
+              throw "Required field '$($check.Key)' is missing or empty"
             }
           }
           Write-Host "✅ All required fields are present" -ForegroundColor Green
@@ -192,8 +198,9 @@ jobs:
       if: always()
       shell: pwsh
       run: |
+        $jobStatus = '${{ job.status }}'
         Write-Host "`n=== Validation Complete ===" -ForegroundColor Cyan
-        if (${{ job.status }} -eq 'success') {
+        if ($jobStatus -eq 'success') {
           Write-Host "✅ All validation checks passed!" -ForegroundColor Green
           Write-Host "The module is ready for publishing." -ForegroundColor Green
         } else {

@@ -151,8 +151,27 @@ jobs:
     - name: Setup PowerShell
       shell: pwsh
       run: |
-        # Ensure we have the latest PowerShellGet
-        Install-Module -Name PowerShellGet -Force -AllowClobber -Scope CurrentUser
+        Write-Host "Setting up PowerShell publishing environment..." -ForegroundColor Green
+        
+        # Install required modules with proper error handling
+        try {
+          # First try to install/update PowerShellGet (legacy)
+          Install-Module -Name PowerShellGet -Force -AllowClobber -Scope CurrentUser -ErrorAction SilentlyContinue
+          
+          # Also install Microsoft.PowerShell.PSResourceGet (new)
+          Install-Module -Name Microsoft.PowerShell.PSResourceGet -Force -AllowClobber -Scope CurrentUser -ErrorAction SilentlyContinue
+        }
+        catch {
+          Write-Warning "Some modules failed to install: $_"
+        }
+        
+        # Check which publishing method is available
+        $hasLegacyPublish = Get-Command Publish-Module -ErrorAction SilentlyContinue
+        $hasNewPublish = Get-Command Publish-PSResource -ErrorAction SilentlyContinue
+        
+        Write-Host "Available publishing methods:" -ForegroundColor Cyan
+        Write-Host "  Publish-Module: $($hasLegacyPublish -ne $null)" -ForegroundColor Gray
+        Write-Host "  Publish-PSResource: $($hasNewPublish -ne $null)" -ForegroundColor Gray
 
     - name: Publish to PowerShell Gallery
       shell: pwsh
@@ -166,8 +185,48 @@ jobs:
         }
         
         try {
-          # Publish the module
-          Publish-PSResource -Path "${{ env.MODULE_PATH }}" -ApiKey $env:PSGALLERY_API_KEY -Repository PSGallery -Verbose
+          # Try different publishing methods based on availability
+          $published = $false
+          
+          # Method 1: Try new PSResourceGet approach
+          if (Get-Command Publish-PSResource -ErrorAction SilentlyContinue) {
+            Write-Host "Attempting to publish using Publish-PSResource..." -ForegroundColor Gray
+            try {
+              # Ensure PSGallery repository is registered
+              $repo = Get-PSResourceRepository -Name PSGallery -ErrorAction SilentlyContinue
+              if (-not $repo) {
+                Write-Host "Registering PSGallery repository..." -ForegroundColor Gray
+                Register-PSResourceRepository -PSGallery -Trusted
+              }
+              
+              Publish-PSResource -Path "${{ env.MODULE_PATH }}" -ApiKey $env:PSGALLERY_API_KEY -Repository PSGallery -Verbose
+              $published = $true
+              Write-Host "✅ Published using Publish-PSResource" -ForegroundColor Green
+            }
+            catch {
+              Write-Warning "Publish-PSResource failed: $_"
+            }
+          }
+          
+          # Method 2: Fallback to legacy PowerShellGet
+          if (-not $published -and (Get-Command Publish-Module -ErrorAction SilentlyContinue)) {
+            Write-Host "Attempting to publish using Publish-Module..." -ForegroundColor Gray
+            try {
+              # Ensure PSGallery is trusted
+              Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
+              
+              Publish-Module -Path "${{ env.MODULE_PATH }}" -NuGetApiKey $env:PSGALLERY_API_KEY -Repository PSGallery -Verbose
+              $published = $true
+              Write-Host "✅ Published using Publish-Module" -ForegroundColor Green
+            }
+            catch {
+              Write-Warning "Publish-Module failed: $_"
+            }
+          }
+          
+          if (-not $published) {
+            throw "All publishing methods failed. No suitable publish command available."
+          }
           
           Write-Host "✅ Module published successfully!" -ForegroundColor Green
           Write-Host "Module: ${{ env.MODULE_NAME }}" -ForegroundColor Cyan
