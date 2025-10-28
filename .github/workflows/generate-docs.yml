@@ -1,0 +1,11 @@
+name: 'Generate Docs'
+on:
+  workflow_dispatch:
+
+jobs:
+  docs:
+    uses: TheCodeSaiyan-PowerShell/tcs-shared-workflows/.github/workflows/powershell-docs.yml@main
+    with:
+      moduleName: 'tcs.core'
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
