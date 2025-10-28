@@ -6,6 +6,7 @@ jobs:
   docs:
     uses: ntatschner/tcs-shared-workflows/.github/workflows/powershell-docs.yml@main
     with:
-      moduleName: 'tcs.core'
+      module_name: 'tcs.core'
+      module_path: 'module/tcs.core'
     secrets:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
