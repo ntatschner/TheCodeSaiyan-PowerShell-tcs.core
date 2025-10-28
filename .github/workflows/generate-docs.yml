@@ -4,7 +4,7 @@ on:
 
 jobs:
   docs:
-    uses: TheCodeSaiyan-PowerShell/tcs-shared-workflows/.github/workflows/powershell-docs.yml@main
+    uses: ntatschner/tcs-shared-workflows/.github/workflows/powershell-docs.yml@main
     with:
       moduleName: 'tcs.core'
     secrets:
