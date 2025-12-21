@@ -1,4 +1,5 @@
 name: Generate PowerShell Documentation
+# Reusable workflow for PlatyPS documentation generation
 
 on:
   push:
