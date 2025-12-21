@@ -8,7 +8,11 @@
     CompatiblePSEditions = @('Desktop', 'Core')
     PowerShellVersion    = '5.1'
     RootModule           = 'tcs.core.psm1'
-    FunctionsToExport    = '*'
+    FunctionsToExport    = @(
+        'ConvertTo-CamelCase',
+        'New-DynamicParameter',
+        'Set-ModuleConfig'
+    )
     CmdletsToExport      = @()
     VariablesToExport    = @()
     AliasesToExport      = @()
@@ -19,5 +23,5 @@
             ReleaseNotes = 'Updated module manifest with explicit function exports and comprehensive help documentation'
         } 
     }
-    HelpInfoURI          = 'https://PENDINGHOST/tcs.core/'
+    HelpInfoURI          = 'https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/'
 }
