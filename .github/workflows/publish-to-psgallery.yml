@@ -17,7 +17,7 @@ jobs:
     uses: ntatschner/tcs-shared-workflows/.github/workflows/publish-to-psgallery.yml@main
     with:
       module-name: 'tcs.core'
-      module-path: 'module/tcs.core'
+      module-path: 'modules/tcs.core'
       force-publish: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force_publish == 'true' }}
       create-release: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run-validation: true

@@ -99,7 +99,7 @@ ModuleVersion = '0.1.8'
 ```yaml
 env:
   MODULE_NAME: 'tcs.core'
-  MODULE_PATH: './module/tcs.core'
+   MODULE_PATH: './modules/tcs.core'
 ```
 
 ### Customization

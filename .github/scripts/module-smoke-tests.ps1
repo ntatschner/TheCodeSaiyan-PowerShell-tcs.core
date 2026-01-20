@@ -2,7 +2,7 @@ param()
 
 $moduleName = 'tcs.core'
 $repoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
-$moduleDirectory = Join-Path -Path $repoRoot -ChildPath 'module/tcs.core'
+$moduleDirectory = Join-Path -Path $repoRoot -ChildPath 'modules/tcs.core'
 $moduleManifest = Join-Path -Path $moduleDirectory -ChildPath 'tcs.core.psd1'
 
 if (-not (Test-Path -Path $moduleManifest)) {
