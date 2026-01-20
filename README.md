@@ -2,7 +2,9 @@
 
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/tcs.core.svg?style=flat-square&label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/tcs.core)
 [![GitHub Release](https://img.shields.io/github/release/ntatschner/TheCodeSaiyan-PowerShell-tcs.core.svg?style=flat-square&label=GitHub%20Release)](https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/releases)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/ci-validate.yml?branch=main&style=flat-square&label=Build)](https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/ci-validate.yml?branch=main&style=flat-square&label=Build)](https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/actions/workflows/ci-validate.yml)
+[![Docs](https://img.shields.io/github/actions/workflow/status/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/generate-docs.yml?branch=main&style=flat-square&label=Docs)](https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/actions/workflows/generate-docs.yml)
+[![Publish](https://img.shields.io/github/actions/workflow/status/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/publish-to-psgallery.yml?branch=main&style=flat-square&label=Publish)](https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/actions/workflows/publish-to-psgallery.yml)
 
 A core utility module providing essential functions for the TheCodeSaiyan PowerShell module suite. This module includes configuration management, dynamic parameter creation, telemetry collection, and utility functions.
 
@@ -34,7 +36,7 @@ Install-Module -Name tcs.core -Scope AllUsers
 git clone https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core.git
 
 # Import the module
-Import-Module .\TheCodeSaiyan-PowerShell-tcs.core\module\tcs.core\tcs.core.psd1
+Import-Module .\TheCodeSaiyan-PowerShell-tcs.core\modules\tcs.core\tcs.core.psd1
 ```
 
 ## 🔧 Functions
@@ -149,7 +151,7 @@ This project uses GitHub Actions for automated testing and publishing:
 
 ### Publishing a New Version
 
-1. Update the version in `module/tcs.core/tcs.core.psd1`
+1. Update the version in `modules/tcs.core/tcs.core.psd1`
 2. Commit your changes: `git commit -am "Release v0.1.8"`
 3. Create and push a version tag: `git tag v0.1.8 && git push origin v0.1.8`
 4. GitHub Actions will automatically validate and publish to PowerShell Gallery
