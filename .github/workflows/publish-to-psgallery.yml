@@ -14,6 +14,8 @@ on:
 
 jobs:
   publish:
+    permissions:
+      contents: write
     uses: ntatschner/tcs-shared-workflows/.github/workflows/publish-to-psgallery.yml@main
     with:
       module-name: 'tcs.core'
