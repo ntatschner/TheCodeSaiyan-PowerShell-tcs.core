@@ -2,6 +2,10 @@ name: Generate PowerShell Documentation
 # Reusable workflow for PlatyPS documentation generation
 
 on:
+  workflow_run:
+    workflows: ['CI Validate']
+    types: [completed]
+    branches: [ main ]
   push:
     branches:
       - main
@@ -22,6 +26,7 @@ on:
 
 jobs:
   docs:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: write
       pull-requests: write
@@ -33,3 +38,4 @@ jobs:
       commit-docs: true
       commit-message: 'docs: auto-generated PowerShell help via PlatyPS [skip ci]'
       locale: 'en-GB'
+      ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
