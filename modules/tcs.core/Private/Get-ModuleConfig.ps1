@@ -76,7 +76,7 @@ function Get-ModuleConfig {
         Write-Verbose "ModulePath: $ModulePath"
         $ModuleName = Get-ChildItem -Path $ModuleFilePath -Filter "*.psd1" -File | Select-Object -First 1 | Select-Object -ExpandProperty BaseName
         Write-Verbose "ModuleName: $ModuleName"
-        $UserPowerShellModuleConfigPath = Join-Path -Path $(Split-Path -Path $($env:PSModulePath -split ';' | ForEach-Object { if (($_ -match $([regex]::Escape($env:USERNAME))) -and ($_ -notmatch '\.')) { $_ } }) -Parent) -ChildPath 'Config'
+        $UserPowerShellModuleConfigPath = Join-Path -Path ([Environment]::GetFolderPath('ApplicationData')) -ChildPath (Join-Path 'PowerShell' 'Config')
         Write-Verbose "UserPowerShellModuleConfigPath: $UserPowerShellModuleConfigPath"
         $ModuleConfigPath = Join-Path -Path $UserPowerShellModuleConfigPath -ChildPath $ModuleName
         Write-Verbose "ModuleConfigPath: $ModuleConfigPath"

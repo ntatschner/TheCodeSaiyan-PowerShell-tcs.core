@@ -17,7 +17,8 @@ foreach ($Function in @($Public + $Private)) {
     }
 }
 #endregion
-# Module Config setup and import
+
+#region Module Config setup and import
 try {
     $CurrentConfig = Get-ModuleConfig -CommandPath $PSCommandPath -ErrorAction Stop
 }

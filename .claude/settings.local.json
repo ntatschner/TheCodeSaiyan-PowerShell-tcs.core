@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"d:\\\\git\\\\TheCodeSaiyan-PowerShell-tcs.core\" -Force)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(gh pr list --state open)",
+      "Bash(gh pr list --state all --limit 10)"
+    ]
+  }
+}

@@ -4,13 +4,9 @@ name: Create Version Tag
 
 on:
   workflow_run:
-    workflows: ['CI Validate']
+    workflows: ['CI - Validate Module']
     types: [completed]
     branches: [ main ]
-  push:
-    branches: [ main ]
-    paths:
-      - 'modules/tcs.core/tcs.core.psd1'
   workflow_dispatch:
 
 jobs:

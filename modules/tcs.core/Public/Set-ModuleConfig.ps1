@@ -74,7 +74,7 @@
     Get-ModuleStatus
 #>
 function Set-ModuleConfig {
-    [CmdletBinding(HelpUri = 'https://PENDINGHOST/tcs.core/docs/Set-ModuleConfig.html')]
+    [CmdletBinding(HelpUri = 'https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/')]
     param(
         [Parameter(HelpMessage = "Determines if the update message is displayed when the module is loaded.")]
         [ValidateSet('True', 'False')]

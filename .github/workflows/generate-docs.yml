@@ -3,12 +3,11 @@ name: Generate PowerShell Documentation
 
 on:
   workflow_run:
-    workflows: ['CI Validate']
+    workflows: ['CI - Validate Module']
     types: [completed]
     branches: [ main ]
   push:
     branches:
-      - main
       - dev
     paths:
       - 'modules/**/*.ps1'
