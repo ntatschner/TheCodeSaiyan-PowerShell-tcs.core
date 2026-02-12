@@ -142,16 +142,16 @@ function New-DynamicParameter {
     process {
         $parameterAttribute = New-Object System.Management.Automation.ParameterAttribute
         $attributeCollection = New-Object Collections.ObjectModel.Collection[System.Attribute]
-        if ([string]::IsNullOrEmpty($ParameterSetName) -eq $false) {
+        if ($PSBoundParameters.ContainsKey('ParameterSetName')) {
             $parameterAttribute.ParameterSetName = $ParameterSetName
         }
-        if ([string]::IsNullOrEmpty($Mandatory) -eq $false) {
+        if ($PSBoundParameters.ContainsKey('Mandatory')) {
             $parameterAttribute.Mandatory = $Mandatory
         }
-        if ([string]::IsNullOrEmpty($Position) -eq $false) {
+        if ($PSBoundParameters.ContainsKey('Position')) {
             $parameterAttribute.Position = $Position
         }
-        if ([string]::IsNullOrEmpty($ValueFromPipelineByPropertyName) -eq $false) {
+        if ($PSBoundParameters.ContainsKey('ValueFromPipelineByPropertyName')) {
             $parameterAttribute.ValueFromPipelineByPropertyName = $ValueFromPipelineByPropertyName
         }
         if (-not [String]::IsNullOrEmpty($HelpMessage)) {

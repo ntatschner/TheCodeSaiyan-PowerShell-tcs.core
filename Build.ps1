@@ -46,7 +46,7 @@ param(
 
 # Module configuration
 $ModuleName = 'tcs.core'
-$ModulePath = Join-Path $PSScriptRoot "module\$ModuleName"
+$ModulePath = Join-Path $PSScriptRoot "modules\$ModuleName"
 $ManifestPath = Join-Path $ModulePath "$ModuleName.psd1"
 
 function Write-TaskHeader {

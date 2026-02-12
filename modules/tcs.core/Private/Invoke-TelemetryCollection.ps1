@@ -83,9 +83,8 @@
     module performance or user experience.
 #>
 function Invoke-TelemetryCollection {
+    [CmdletBinding(HelpUri = 'https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/')]
     param (
-        [CmdletBinding(HelpUri = 'https://PENDINGHOST/tcs.core/docs/Invoke-TelemetryCollection.html')]
-
         [string]$ModuleName = 'UnknownModule',
 
         [string]$ModuleVersion = 'UnknownModuleVersion',
@@ -115,6 +114,12 @@ function Invoke-TelemetryCollection {
 
     $CurrentTime = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
 
+    # Validate URI uses HTTPS to prevent sending telemetry over insecure channels
+    if ($URI -notmatch '^https://') {
+        Write-Warning "Telemetry URI must use HTTPS. Telemetry collection skipped."
+        return
+    }
+
     switch -Regex ($Stage) {
         'Module-Load' {
             if ((Get-Variable -Name "GlobalExecutionDuration_$ExecutionID" -Scope script -ErrorAction SilentlyContinue) -and (-Not $ClearTimer)) {
@@ -135,6 +140,10 @@ function Invoke-TelemetryCollection {
         "End|Module-Load" {
             Start-Job -Name "TC_Job_Trying_To_Be_Unique_9000" -ArgumentList $(Get-Variable -Name "GlobalExecutionDuration_$ExecutionID" -ErrorAction SilentlyContinue).Value -ScriptBlock {
                 param ($GlobalExecutionDuration)
+
+                # Enforce TLS 1.2+
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
                 $ExecutionDuration = [Int64]$($(New-TimeSpan -Start $GlobalExecutionDuration -End $(Get-Date)).TotalMilliseconds * 1e6)
                 $WebRequestArgs = @{
                     Uri             = $Using:URI
@@ -142,15 +151,27 @@ function Invoke-TelemetryCollection {
                     ContentType     = 'application/json'
                     UseBasicParsing = $true
                 }
-                # Generate hardware specific but none identifying telemetry data for the output
-                $Hardware = Get-WmiObject -Class Win32_ComputerSystem
-                $bootPartition = Get-WmiObject -Class Win32_DiskPartition | Where-Object -Property bootpartition -eq True
-                $bootDriveSerial = $(Get-WmiObject -Class Win32_DiskDrive | Where-Object -Property index -eq $bootPartition.diskIndex)
-                if ([string]::IsNullOrEmpty($bootDriveSerial.SerialNumber) -and ($bootDriveSerial.Model -like '*Virtual*')) {
-                    $bootDriveSerial = "VirtualDrive-$($bootDriveSerial.size)"
+
+                # Helper to hash sensitive identifiers before transmission
+                function Get-HashedValue {
+                    param([string]$Value)
+                    if ([string]::IsNullOrEmpty($Value)) { return 'Unknown' }
+                    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes($Value)
+                    $hash = $sha256.ComputeHash($bytes)
+                    return [BitConverter]::ToString($hash).Replace('-', '').Substring(0, 16)
+                }
+
+                # Generate hardware telemetry using CIM (cross-edition compatible)
+                $Hardware = Get-CimInstance -ClassName Win32_ComputerSystem
+                $BIOS = Get-CimInstance -ClassName Win32_BIOS
+                $bootPartition = Get-CimInstance -ClassName Win32_DiskPartition | Where-Object { $_.BootPartition -eq $true }
+                $bootDrive = Get-CimInstance -ClassName Win32_DiskDrive | Where-Object { $_.Index -eq $bootPartition.DiskIndex }
+                if ([string]::IsNullOrEmpty($bootDrive.SerialNumber) -and ($bootDrive.Model -like '*Virtual*')) {
+                    $bootDriveSerial = Get-HashedValue "VirtualDrive-$($bootDrive.Size)"
                 }
                 else {
-                    $bootDriveSerial = $bootDriveSerial.SerialNumber.Trim()
+                    $bootDriveSerial = Get-HashedValue $bootDrive.SerialNumber.Trim()
                 }
 
                 $HardwareData = @{
@@ -160,23 +181,22 @@ function Invoke-TelemetryCollection {
                     NumberOfProcessors        = $Hardware.NumberOfProcessors
                     NumberOfLogicalProcessors = $Hardware.NumberOfLogicalProcessors
                     PartOfDomain              = $Hardware.PartOfDomain
-                    HardwareSerialNumber      = $((Get-WmiObject -Class Win32_BIOS).SerialNumber)
+                    HardwareSerialNumber      = Get-HashedValue $BIOS.SerialNumber
                     BootDriveSerial           = $bootDriveSerial
                 }
 
-                # Generate OS specific but none identifying telemetry data for the output
-                $OS = Get-WmiObject -Class Win32_OperatingSystem
+                # Generate OS telemetry using CIM (cross-edition compatible)
+                $OS = Get-CimInstance -ClassName Win32_OperatingSystem
 
                 $OSData = @{
                     OSType         = $OS.Caption
                     OSArchitecture = $OS.OSArchitecture
                     OSVersion      = $OS.Version
                     OSBuildNumber  = $OS.BuildNumber
-                    SerialNumber   = $OS.SerialNumber
+                    SerialNumber   = Get-HashedValue $OS.SerialNumber
                 }
 
-                # Generate PowerShell specific but none identifying telemetry data for the output
-
+                # Generate PowerShell telemetry
                 $PSData = @{
                     PowerShellVersion = $PSVersionTable.PSVersion.ToString()
                     HostVersion       = $Host.Version.ToString()
@@ -186,42 +206,39 @@ function Invoke-TelemetryCollection {
                     HostUICulture     = $Host.CurrentUICulture.ToString()
                 }
 
-                # Generate module specific but none identifying telemetry data for the output
-
+                # Generate module telemetry
                 $ModuleData = @{
                     ModuleName    = if ([string]::IsNullOrEmpty($Using:ModuleName)) { 'UnknownModule' } else { $Using:ModuleName }
                     ModuleVersion = if ([string]::IsNullOrEmpty($Using:ModuleVersion)) { 'UnknownModuleVersion' } else { $Using:ModuleVersion }
                     ModulePath    = if ([string]::IsNullOrEmpty($Using:ModulePath)) { 'UnknownModulePath' } else { $Using:ModulePath }
                     CommandName   = if ([string]::IsNullOrEmpty($Using:CommandName)) { 'UnknownCommand' } else { $Using:CommandName }
                 }
-                # Create a new hashtable
-                $AllData = @{}
 
-                # Add each hashtable to the new hashtable
+                # Combine all telemetry data
+                $AllData = @{}
                 $AllData += $HardwareData
                 $AllData += $OSData
                 $AllData += $PSData
                 $AllData += $ModuleData
-                $AllData += @{ID = $AllData.BootDriveSerial + "_" + $AllData.SerialNumber } 
+                $AllData += @{ID = $AllData.BootDriveSerial + "_" + $AllData.SerialNumber }
                 $AllData += @{LocalDateTime = $Using:CurrentTime }
                 $AllData += @{ExecutionDuration = $ExecutionDuration }
                 $AllData += @{Stage = $Using:Stage }
                 $AllData += @{Failed = $Using:Failed }
                 $AllData += @{Exception = $Using:Exception | Out-String }
                 $AllData += @{ExecutionID = $Using:ExecutionID }
-                if ($Minimal) {
-                    $AllData | ForEach-Object {
-                        if ($_.Name -notin @('ID', 'CommandName', 'ModuleName', 'ModuleVersion', 'LocalDateTime', 'ExecutionDuration', 'Stage', 'Failed', 'Exception', 'ExecutionID')) {
-                            $_.Value = 'Minimal'
+
+                if ($Using:Minimal) {
+                    $keysToKeep = @('ID', 'CommandName', 'ModuleName', 'ModuleVersion', 'LocalDateTime', 'ExecutionDuration', 'Stage', 'Failed', 'Exception', 'ExecutionID')
+                    foreach ($key in @($AllData.Keys)) {
+                        if ($key -notin $keysToKeep) {
+                            $AllData[$key] = 'Minimal'
                         }
-                        $body = $AllData | ConvertTo-Json
-                        Invoke-WebRequest @WebRequestArgs -Body $body | Out-Null
                     }
                 }
-                else {
-                    $body = $AllData | ConvertTo-Json
-                    Invoke-WebRequest @WebRequestArgs -Body $body | Out-Null
-                }
+
+                $body = $AllData | ConvertTo-Json
+                Invoke-WebRequest @WebRequestArgs -Body $body | Out-Null
             } | Out-Null
             # Clear Old Jobs
             Get-Job -Name "TC_Job_Trying_To_Be_Unique_9000" -ErrorAction SilentlyContinue | Where-Object State -in Completed, Failed | Remove-Job -Force -ErrorAction SilentlyContinue | Out-Null

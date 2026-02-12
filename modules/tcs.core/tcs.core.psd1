@@ -11,7 +11,11 @@
     FunctionsToExport    = @(
         'ConvertTo-CamelCase',
         'New-DynamicParameter',
-        'Set-ModuleConfig'
+        'Set-ModuleConfig',
+        'Invoke-TelemetryCollection',
+        'Get-ModuleConfig',
+        'Get-ModuleStatus',
+        'Get-ParameterValues'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

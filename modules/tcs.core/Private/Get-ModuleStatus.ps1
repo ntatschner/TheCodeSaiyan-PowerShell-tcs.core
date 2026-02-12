@@ -64,8 +64,8 @@ function Get-ModuleStatus {
         # Get the current version of the installed module and check against the latest version in PSGallery, then notify the user as a warning message that an update is availible.
         $PSD1File = Join-Path -Path $ModulePath -ChildPath "$ModuleName.psd1"
         if ($ShowMessage) {
-            $CurrentlyLoadedModuleVersion = (Import-PowerShellDataFile -Path $PSD1File).ModuleVersion
-            $LatestModuleVersion = (Find-PSResource -Name $ModuleName).Version
+            $CurrentlyLoadedModuleVersion = [version](Import-PowerShellDataFile -Path $PSD1File).ModuleVersion
+            $LatestModuleVersion = [version](Find-PSResource -Name $ModuleName).Version
             if ($CurrentlyLoadedModuleVersion -lt $LatestModuleVersion) {
                 Write-Host -ForegroundColor Yellow "An update is available for the module '$ModuleName'. Installed version: $CurrentlyLoadedModuleVersion, Latest version: $LatestModuleVersion.`nPlease run 'Update-Module $ModuleName' to update the module."
             }
