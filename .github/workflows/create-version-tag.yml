@@ -19,6 +19,6 @@ jobs:
       module-name: 'tcs.core'
       module-path: 'modules/tcs.core'
       tag-prefix: 'v'
-      ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || (github.event_name == 'push' && github.sha) || '' }}
+      ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
     secrets:
       repo-token: ${{ secrets.GITHUB_TOKEN }}
