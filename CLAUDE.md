@@ -32,20 +32,15 @@ pwsh -File .github/scripts/module-smoke-tests.ps1
 Import-Module .\modules\tcs.core\tcs.core.psd1 -Force
 ```
 
-## Known Issue: Build.ps1 Module Path
-
-`Build.ps1` line 49 uses `module\$ModuleName` (singular) but the actual directory is `modules\tcs.core` (plural). The CI pipeline uses the smoke test script instead, which has the correct path. Be aware of this if running `Build.ps1` locally.
-
 ## Architecture
 
 ### Module Layout
 
 - `modules/tcs.core/tcs.core.psd1` - Module manifest (version, exports, metadata)
 - `modules/tcs.core/tcs.core.psm1` - Root module; dot-sources all `.ps1` files from `Public/` and `Private/`, initializes config, exports functions
-- `modules/tcs.core/Public/` - Exported functions (ConvertTo-CamelCase, New-DynamicParameter, Set-ModuleConfig)
-- `modules/tcs.core/Private/` - Internal functions (Get-ModuleConfig, Get-ModuleStatus, Get-ParameterValues, Invoke-TelemetryCollection)
+- `modules/tcs.core/Public/` - Exported functions (ConvertTo-CamelCase, ConvertTo-HashTable, ConvertTo-KebabCase, ConvertTo-PascalCase, ConvertTo-SnakeCase, Invoke-WithRetry, New-DynamicParameter, New-TemporaryDirectory, Protect-ConfigValue, Set-ModuleConfig, Test-IsElevated, Unprotect-ConfigValue, Write-Log)
+- `modules/tcs.core/Private/` - Internal functions also exported cross-module (Get-ModuleConfig, Get-ModuleStatus, Get-ParameterValues, Invoke-TelemetryCollection)
 - `modules/tcs.core/Config/Module.Defaults.json` - Default configuration values
-- `modules/tcs.core/Colors.ps1` - Color splatting variables for Write-Host
 
 ### Function/Test Convention
 
@@ -54,7 +49,7 @@ Each function lives in its own `.ps1` file. Tests are colocated in a `Tests/` su
 2. Runs functional tests in a `Describe` block
 3. Runs PSScriptAnalyzer compliance tests against each rule
 
-PSScriptAnalyzer settings: Severity=Error,Warning; ExcludeRules=PSAvoidUsingInvokeExpression (see `Tests/PSScriptAnalyzerSettings.psd1`).
+PSScriptAnalyzer settings: Severity=Error,Warning (see `Tests/PSScriptAnalyzerSettings.psd1`).
 
 ### Module Load Sequence (tcs.core.psm1)
 

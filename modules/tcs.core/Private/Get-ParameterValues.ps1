@@ -16,6 +16,11 @@
     An array of parameter names to exclude from the output. This is combined with a default
     set of common PowerShell automatic variables like 'Verbose', 'Debug', 'ErrorAction', etc.
 
+.PARAMETER Include
+    An array of parameter names to include in the output. When provided, only keys in this
+    list are returned (still excluding nulls and common parameters). When not provided,
+    all non-excluded parameters are returned.
+
 .INPUTS
     None
     This function does not accept pipeline input.
@@ -40,10 +45,15 @@
     
     Extracts parameters while excluding 'TempPath' in addition to the default exclusions.
 
+.EXAMPLE
+    $filteredParams = Get-ParameterValues -PSBoundParametersHash $PSBoundParameters -Include @('Name', 'Value')
+    
+    Extracts only the 'Name' and 'Value' parameters, ignoring all others.
+
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.1.7
+    Version: 0.2.0
     
     This is a private function used internally by the tcs.core module for parameter
     processing and configuration management. It automatically excludes common PowerShell
@@ -54,7 +64,8 @@ function Get-ParameterValues {
     param(
         [Parameter(Mandatory)]
         [hashtable]$PSBoundParametersHash,
-        [string[]]$Exclude
+        [string[]]$Exclude,
+        [string[]]$Include
     )
     # Get all the PSBoundParameters and set the values as a hashtable
     $DefaultExclude = @('Verbose', 'Debug', 'ErrorAction', 'WarningAction', 'InformationAction', 'ErrorVariable', 'WarningVariable', 'InformationVariable', 'OutVariable', 'OutBuffer', 'PipelineVariable')
@@ -67,9 +78,11 @@ function Get-ParameterValues {
     $PSBoundParametersHash.GetEnumerator() | ForEach-Object {
         # Only add the key and value to the hashtable if the value is not null and not the default parameters
         if ($null -ne $_.Value -and $Exclude -notcontains $_.Key) {
-            $Key = $_.Key
-            $Value = $_.Value
-            $Parameters.Add($Key, $Value)
+            if ($null -eq $Include -or $Include -contains $_.Key) {
+                $Key = $_.Key
+                $Value = $_.Value
+                $Parameters.Add($Key, $Value)
+            }
         }
     }
     $Parameters
