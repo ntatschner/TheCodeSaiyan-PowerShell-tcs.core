@@ -4,8 +4,9 @@
 
 .DESCRIPTION
     The Get-ModuleStatus function compares the currently installed version of a module
-    with the latest version available in the PowerShell Gallery. When the ShowMessage
-    parameter is specified, it displays a warning message if an update is available.
+    with the latest version available in the PowerShell Gallery. It always returns a
+    structured PSCustomObject with version information. When the ShowMessage parameter
+    is specified, it also displays a warning message if an update is available.
     This function is typically called during module import to notify users of available updates.
 
 .PARAMETER ShowMessage
@@ -25,30 +26,34 @@
     This function does not accept pipeline input.
 
 .OUTPUTS
-    None
-    This function does not return any output. It may display warning messages
-    when ShowMessage is specified and updates are available.
+    PSCustomObject
+    Returns a PSCustomObject with ModuleName, CurrentVersion, LatestVersion, and
+    UpdateAvailable properties. May also display warning messages when ShowMessage
+    is specified and updates are available.
 
 .EXAMPLE
     Get-ModuleStatus -ModuleName "tcs.core" -ModulePath "C:\Modules\tcs.core" -ShowMessage
     
-    Checks for updates to the tcs.core module and displays a message if an update is available.
+    Checks for updates to the tcs.core module, displays a message if an update is available,
+    and returns a status object.
 
 .EXAMPLE
-    Get-ModuleStatus -ModuleName "MyModule" -ModulePath $ModulePath
+    $status = Get-ModuleStatus -ModuleName "MyModule" -ModulePath $ModulePath
+    if ($status.UpdateAvailable) { Write-Host "Update available!" }
     
-    Checks the module status without displaying any messages.
+    Checks the module status and uses the returned object to determine if an update is available.
 
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.1.7
+    Version: 0.2.0
     
     This is a private function used internally by the tcs.core module for update
     checking. It gracefully handles errors and will not interrupt module loading
     if the PowerShell Gallery is unavailable or if network issues occur.
 #>
 function Get-ModuleStatus {
+    [OutputType([PSCustomObject])]
     param (
         [switch]$ShowMessage,
 
@@ -61,18 +66,17 @@ function Get-ModuleStatus {
         [string]$ModulePath
     )
     try {
-        # Get the current version of the installed module and check against the latest version in PSGallery, then notify the user as a warning message that an update is availible.
         $PSD1File = Join-Path -Path $ModulePath -ChildPath "$ModuleName.psd1"
-        if ($ShowMessage) {
-            $CurrentlyLoadedModuleVersion = [version](Import-PowerShellDataFile -Path $PSD1File).ModuleVersion
-            $LatestModuleVersion = [version](Find-PSResource -Name $ModuleName).Version
-            if ($CurrentlyLoadedModuleVersion -lt $LatestModuleVersion) {
-                Write-Host -ForegroundColor Yellow "An update is available for the module '$ModuleName'. Installed version: $CurrentlyLoadedModuleVersion, Latest version: $LatestModuleVersion.`nPlease run 'Update-Module $ModuleName' to update the module."
-            }
-            return
+        $CurrentlyLoadedModuleVersion = [version](Import-PowerShellDataFile -Path $PSD1File).ModuleVersion
+        $LatestModuleVersion = [version](Find-PSResource -Name $ModuleName).Version
+        if ($ShowMessage -and ($CurrentlyLoadedModuleVersion -lt $LatestModuleVersion)) {
+            Write-Host -ForegroundColor Yellow "An update is available for the module '$ModuleName'. Installed version: $CurrentlyLoadedModuleVersion, Latest version: $LatestModuleVersion.`nPlease run 'Update-Module $ModuleName' to update the module."
         }
-        else {
-            return
+        [PSCustomObject]@{
+            ModuleName      = $ModuleName
+            CurrentVersion  = $CurrentlyLoadedModuleVersion
+            LatestVersion   = $LatestModuleVersion
+            UpdateAvailable = $CurrentlyLoadedModuleVersion -lt $LatestModuleVersion
         }
     }
     catch {

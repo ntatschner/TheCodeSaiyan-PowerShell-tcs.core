@@ -34,7 +34,7 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.1.7
+    Version: 0.2.0
     
     This is a private function used internally by the tcs.core module for configuration
     management. It handles automatic creation of configuration files with default values
@@ -101,6 +101,7 @@ function Get-ModuleConfig {
         $HashTable.Add('ModuleConfigPath', $ModuleConfigPath)
         $HashTable.Add('ModuleConfigFilePath', $ModuleConfigFilePath)
         New-Item -Path $ModuleConfigFilePath -ItemType File -Value $($HashTable | ConvertTo-Json) -Force -Confirm:$false
+        $HashTable
     }
     else {
         $Config = Get-Content -Path $ModuleConfigFilePath | ConvertFrom-Json
@@ -113,14 +114,11 @@ function Get-ModuleConfig {
         $CurrentlyLoadedModuleVersion = (Import-PowerShellDataFile -Path $($ModuleFilePath.Replace('.psm1','.psd1'))).ModuleVersion
         if ($Config.ModuleVersion -ne $CurrentlyLoadedModuleVersion) {
             $Config.ModuleVersion = $CurrentlyLoadedModuleVersion
-            $Config | ConvertTo-Json | Set-Content -Path $ModuleConfigFilePath -Force -Confirm:$false
-            $Config = Get-Content -Path $ModuleConfigFilePath | ConvertFrom-Json
         }
         if ($Config.ModulePath -ne $ModulePath) {
             $Config.ModulePath = $ModulePath
-            $Config | ConvertTo-Json | Set-Content -Path $ModuleConfigFilePath -Force -Confirm:$false
-            $Config = Get-Content -Path $ModuleConfigFilePath | ConvertFrom-Json
         }
+        $Config | ConvertTo-Json | Set-Content -Path $ModuleConfigFilePath -Force -Confirm:$false
         $HashTable = @{}
         $Config.PSObject.Properties | ForEach-Object { $HashTable[$_.Name] = $_.Value }
         $HashTable

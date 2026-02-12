@@ -26,7 +26,7 @@ catch {
     Write-Error "Module Import error: `n $($_.Exception.Message)"
 }
 
-if ($CurrentConfig.UpdateWarning -eq 'True') {
+if ($CurrentConfig.UpdateWarning -eq 'True' -or $CurrentConfig.UpdateWarning -eq $true) {
     Get-ModuleStatus -ShowMessage -ModuleName $CurrentConfig.ModuleName -ModulePath $CurrentConfig.ModulePath
 }
 #endregion

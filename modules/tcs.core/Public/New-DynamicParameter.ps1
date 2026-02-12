@@ -44,6 +44,27 @@
     A script block used to validate the parameter value. The script should return $true for valid
     values and $false for invalid ones. This parameter is part of the 'ValidateScript' parameter set.
 
+.PARAMETER ValidateNotNullOrEmpty
+    Switch parameter that adds a ValidateNotNullOrEmpty attribute to the dynamic parameter.
+
+.PARAMETER ValidatePattern
+    A regex pattern string that adds a ValidatePattern attribute to the dynamic parameter.
+    This parameter is part of the 'ValidatePattern' parameter set.
+
+.PARAMETER ValidateRange
+    An array of two integers (min, max) that adds a ValidateRange attribute to the dynamic parameter.
+    This parameter is part of the 'ValidateRange' parameter set.
+
+.PARAMETER ValidateLength
+    An array of two integers (min, max) that adds a ValidateLength attribute to the dynamic parameter.
+    This parameter is part of the 'ValidateLength' parameter set.
+
+.PARAMETER Alias
+    An array of alias names for the dynamic parameter.
+
+.PARAMETER ValueFromPipeline
+    Switch parameter that enables the dynamic parameter to accept values from pipeline input.
+
 .INPUTS
     System.String
     You can pipe parameter names to New-DynamicParameter.
@@ -85,10 +106,26 @@
         }
     }
 
+.EXAMPLE
+    # Create a parameter with ValidateNotNullOrEmpty and an alias
+    $dynParam = New-DynamicParameter -Name "UserName" -ParameterType ([string]) -ValidateNotNullOrEmpty -Alias @("User", "Name")
+
+.EXAMPLE
+    # Create a parameter with ValidatePattern
+    $dynParam = New-DynamicParameter -Name "Email" -ParameterType ([string]) -ValidatePattern '^[\w.]+@[\w.]+$'
+
+.EXAMPLE
+    # Create a parameter with ValidateRange
+    $dynParam = New-DynamicParameter -Name "Port" -ParameterType ([int]) -ValidateRange @(1, 65535)
+
+.EXAMPLE
+    # Create a parameter with ValidateLength and ValueFromPipeline
+    $dynParam = New-DynamicParameter -Name "Code" -ParameterType ([string]) -ValidateLength @(2, 10) -ValueFromPipeline
+
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.1.7
+    Version: 0.2.0
     
     This function is part of the tcs.core module and is designed to simplify the creation
     of dynamic parameters in advanced PowerShell functions. It handles the complex
@@ -136,7 +173,28 @@ function New-DynamicParameter {
 
         [Parameter(Mandatory, ParameterSetName = 'ValidateScript')]
         [scriptblock]
-        $ValidateScript
+        $ValidateScript,
+
+        [switch]
+        $ValidateNotNullOrEmpty,
+
+        [Parameter(Mandatory, ParameterSetName = 'ValidatePattern')]
+        [string]
+        $ValidatePattern,
+
+        [Parameter(Mandatory, ParameterSetName = 'ValidateRange')]
+        [int[]]
+        $ValidateRange,
+
+        [Parameter(Mandatory, ParameterSetName = 'ValidateLength')]
+        [int[]]
+        $ValidateLength,
+
+        [string[]]
+        $Alias,
+
+        [switch]
+        $ValueFromPipeline
     )
 
     process {
@@ -154,6 +212,9 @@ function New-DynamicParameter {
         if ($PSBoundParameters.ContainsKey('ValueFromPipelineByPropertyName')) {
             $parameterAttribute.ValueFromPipelineByPropertyName = $ValueFromPipelineByPropertyName
         }
+        if ($PSBoundParameters.ContainsKey('ValueFromPipeline')) {
+            $parameterAttribute.ValueFromPipeline = $ValueFromPipeline
+        }
         if (-not [String]::IsNullOrEmpty($HelpMessage)) {
             $parameterAttribute.HelpMessage = $HelpMessage
         }
@@ -169,6 +230,32 @@ function New-DynamicParameter {
                 $parameterValidateScript = New-Object System.Management.Automation.ValidateScriptAttribute -ArgumentList $ValidateScript
             }
             $attributeCollection.Add($parameterValidateScript)
+        }
+        if ($PSBoundParameters.ContainsKey('ValidateNotNullOrEmpty')) {
+            $parameterValidateNotNullOrEmpty = New-Object System.Management.Automation.ValidateNotNullOrEmptyAttribute
+            $attributeCollection.Add($parameterValidateNotNullOrEmpty)
+        }
+        if (-not [String]::IsNullOrEmpty($ValidatePattern)) {
+            if ($PSCmdlet.ParameterSetName -eq 'ValidatePattern') {
+                $parameterValidatePattern = New-Object System.Management.Automation.ValidatePatternAttribute -ArgumentList $ValidatePattern
+            }
+            $attributeCollection.Add($parameterValidatePattern)
+        }
+        if ($PSBoundParameters.ContainsKey('ValidateRange')) {
+            if ($PSCmdlet.ParameterSetName -eq 'ValidateRange') {
+                $parameterValidateRange = New-Object System.Management.Automation.ValidateRangeAttribute -ArgumentList $ValidateRange[0], $ValidateRange[1]
+            }
+            $attributeCollection.Add($parameterValidateRange)
+        }
+        if ($PSBoundParameters.ContainsKey('ValidateLength')) {
+            if ($PSCmdlet.ParameterSetName -eq 'ValidateLength') {
+                $parameterValidateLength = New-Object System.Management.Automation.ValidateLengthAttribute -ArgumentList $ValidateLength[0], $ValidateLength[1]
+            }
+            $attributeCollection.Add($parameterValidateLength)
+        }
+        if ($PSBoundParameters.ContainsKey('Alias')) {
+            $parameterAlias = New-Object System.Management.Automation.AliasAttribute -ArgumentList $Alias
+            $attributeCollection.Add($parameterAlias)
         }
 
         $attributeCollection.Add($parameterAttribute)

@@ -73,7 +73,7 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.1.7
+    Version: 0.2.0
     
     This is a private function used internally by the tcs.core module for telemetry
     collection. All data collected is anonymized and used solely for improving module
@@ -94,7 +94,7 @@ function Invoke-TelemetryCollection {
         [string]$CommandName = 'UnknownCommand',
         
         [Parameter(Mandatory = $true)]
-        [string]$ExecutionID = 'UnknownExecutionID',
+        [string]$ExecutionID,
 
         [Parameter(Mandatory = $true)]
         [ValidateSet('Start', 'In-Progress', 'End', 'Module-Load')]
