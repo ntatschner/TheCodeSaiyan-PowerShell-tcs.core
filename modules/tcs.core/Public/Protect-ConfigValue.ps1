@@ -57,6 +57,8 @@
     https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/
 #>
 function Protect-ConfigValue {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '',
+        Justification = 'Intentional: this function encrypts plaintext config values for secure storage via DPAPI.')]
     [CmdletBinding()]
     [OutputType([System.String])]
     param(
