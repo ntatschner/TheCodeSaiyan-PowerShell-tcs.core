@@ -1,17 +1,30 @@
 #region get public and private function definition files.
 $Public  = @(
-    Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
+    Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue -Recurse
 )
 $Private = @(
-    Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
+    Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue -Recurse
 )
+#endregion
+
+#region load Classes before functions
+$ClassFiles = @(
+    Get-ChildItem -Path $PSScriptRoot\Classes\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue -Recurse
+)
+foreach ($Class in $ClassFiles) {
+    try {
+        . $Class.FullName
+    } catch {
+        Write-Error -Message "Failed to import class at $($Class.FullName): $_"
+    }
+}
 #endregion
 
 #region source the files
 foreach ($Function in @($Public + $Private)) {
     $FunctionPath = $Function.fullname
     try {
-	. $FunctionPath # dot source function
+	. $FunctionPath
     } catch {
 	Write-Error -Message "Failed to import function at $($FunctionPath): $_"
     }
