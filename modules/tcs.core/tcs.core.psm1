@@ -1,19 +1,32 @@
-#region get public and private function definition files.
+#region Load Classes before functions (classes must be available first)
+$Classes = @(
+    Get-ChildItem -Path $PSScriptRoot\Classes\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue -Recurse
+)
+foreach ($Class in $Classes) {
+    try {
+        . $Class.FullName
+    } catch {
+        Write-Error -Message "Failed to import class $($Class.FullName): $_"
+    }
+}
+#endregion
+
+#region Get public and private function definition files.
 $Public  = @(
-    Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
+    Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue -Recurse
 )
 $Private = @(
-    Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue
+    Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue -Recurse
 )
 #endregion
 
-#region source the files
+#region Source the files
 foreach ($Function in @($Public + $Private)) {
-    $FunctionPath = $Function.fullname
+    $FunctionPath = $Function.FullName
     try {
-	. $FunctionPath # dot source function
+        . $FunctionPath
     } catch {
-	Write-Error -Message "Failed to import function at $($FunctionPath): $_"
+        Write-Error -Message "Failed to import function at $($FunctionPath): $_"
     }
 }
 #endregion
@@ -31,7 +44,6 @@ if ($CurrentConfig.UpdateWarning -eq 'True' -or $CurrentConfig.UpdateWarning -eq
 }
 #endregion
 
-#region export Public functions ($Public.BaseName) for WIP modules
-Export-ModuleMember -Function $Public.Basename
-Export-ModuleMember -Function Invoke-TelemetryCollection, Get-ModuleConfig, Get-ModuleStatus, Get-ParameterValues
+#region Export public functions only
+Export-ModuleMember -Function $Public.BaseName
 #endregion
