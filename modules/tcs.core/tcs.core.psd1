@@ -21,11 +21,7 @@
         'Set-ModuleConfig',
         'Test-IsElevated',
         'Unprotect-ConfigValue',
-        'Write-Log',
-        'Invoke-TelemetryCollection',
-        'Get-ModuleConfig',
-        'Get-ModuleStatus',
-        'Get-ParameterValues'
+        'Write-Log'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()
@@ -35,7 +31,7 @@
             Tags         = @('Core', 'Utility', 'Module', 'Telemetry', 'Configuration', 'DynamicParameters', 'Logging', 'Retry', 'StringCasing', 'Security')
             ProjectUri   = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core'
             ReleaseNotes = 'v0.2.0: Added Write-Log, Invoke-WithRetry, ConvertTo-HashTable, Test-IsElevated, New-TemporaryDirectory, Protect/Unprotect-ConfigValue, ConvertTo-PascalCase/KebabCase/SnakeCase. Improved ConvertTo-CamelCase, Set-ModuleConfig, Get-ModuleConfig, Get-ModuleStatus, New-DynamicParameter, Get-ParameterValues. Security hardening for telemetry. Bug fixes.'
-        } 
+        }
     }
     HelpInfoURI          = 'https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/'
 }
