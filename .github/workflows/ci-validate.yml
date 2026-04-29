@@ -5,11 +5,13 @@ on:
     branches: [ main ]
     paths:
       - 'modules/**'
+      - 'Build.ps1'
       - '.github/workflows/**'
   push:
     branches: [ main ]
     paths:
       - 'modules/**'
+      - 'Build.ps1'
       - '.github/workflows/**'
 
 jobs:
@@ -20,3 +22,59 @@ jobs:
       module-name: 'tcs.core'
       module-path: 'modules/tcs.core'
       smoke-test-script-path: '.github/scripts/module-smoke-tests.ps1'
+
+  lint:
+    name: PSScriptAnalyzer Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path ./modules/tcs.core -Recurse -Severity Warning,Error
+          if ($results) {
+              $errors   = ($results | Where-Object Severity -eq 'Error').Count
+              $warnings = ($results | Where-Object Severity -eq 'Warning').Count
+              $results | Format-Table ScriptName, Line, Column, RuleName, Message -Wrap
+              Write-Host "Found $errors error(s) and $warnings warning(s)"
+              if ($errors -gt 0) { exit 1 }
+          } else {
+              Write-Host "No PSScriptAnalyzer issues found"
+          }
+
+  test:
+    name: Pester Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pester
+        shell: pwsh
+        run: Install-Module Pester -MinimumVersion 5.0 -Force -Scope CurrentUser
+
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = './modules/tcs.core'
+          $config.Run.Recurse = $true
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputPath = 'TestResults.xml'
+          $config.Output.Verbosity = 'Detailed'
+          $result = Invoke-Pester -Configuration $config
+          if ($result.FailedCount -gt 0) {
+              Write-Host "$($result.FailedCount) test(s) failed"
+              exit 1
+          }
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pester-results
+          path: TestResults.xml
