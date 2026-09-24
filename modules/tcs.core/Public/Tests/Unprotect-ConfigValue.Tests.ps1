@@ -76,4 +76,37 @@ Describe 'Unprotect-ConfigValue format and platforms' {
         Unprotect-ConfigValue -EncryptedValue $legacy -Scope LocalMachine -WarningVariable warnings -WarningAction SilentlyContinue | Should -BeExactly 'old'
         $warnings.Count | Should -Be 1
     }
+
+    It 'Gives a clear error, and no legacy warning, for a value that was never protected' -ForEach @(
+        @{ Value = 'hello' }, @{ Value = 'tcs:v2:x' }, @{ Value = 'abc' }
+    ) {
+        $warnings = $null
+        $errs = $null
+        Unprotect-ConfigValue -EncryptedValue $Value -WarningVariable warnings -WarningAction SilentlyContinue -ErrorVariable errs -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+        $warnings.Count | Should -Be 0
+        $errs[0].ToString() | Should -Match 'not protected'
+    }
+
+    It 'Reads a legacy LocalMachine value whatever -Scope is given' {
+        $legacyKey = [System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes([string]$env:COMPUTERNAME + 'tcs.core'))
+        $legacy = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String 'old' -AsPlainText -Force) -Key $legacyKey
+        Unprotect-ConfigValue -EncryptedValue $legacy -WarningAction SilentlyContinue | Should -BeExactly 'old'
+    }
+
+    It 'Reads a legacy LocalMachine value keyed with the machine name' {
+        $legacyKey = [System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes([Environment]::MachineName + 'tcs.core'))
+        $legacy = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String 'machine' -AsPlainText -Force) -Key $legacyKey
+        Unprotect-ConfigValue -EncryptedValue $legacy -Scope LocalMachine -WarningAction SilentlyContinue | Should -BeExactly 'machine'
+    }
+
+    It 'Reads a legacy LocalMachine value written where COMPUTERNAME was empty' {
+        $legacyKey = [System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes('tcs.core'))
+        $legacy = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String 'empty' -AsPlainText -Force) -Key $legacyKey
+        Unprotect-ConfigValue -EncryptedValue $legacy -Scope LocalMachine -WarningAction SilentlyContinue | Should -BeExactly 'empty'
+    }
+
+    It 'Reads a legacy CurrentUser value' {
+        $legacy = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String 'user value' -AsPlainText -Force)
+        Unprotect-ConfigValue -EncryptedValue $legacy -WarningAction SilentlyContinue | Should -BeExactly 'user value'
+    }
 }
