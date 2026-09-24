@@ -96,4 +96,26 @@ Describe 'Write-Log options' {
         $captured = Write-Log -Message 'stream test' 6>&1
         "$captured" | Should -Match 'stream test'
     }
+
+    It 'Writes Error messages to the error stream, not the host' {
+        $errors = $null
+        $hostOutput = Write-Log -Message 'boom' -Level Error -ErrorVariable errors -ErrorAction SilentlyContinue 6>&1
+        $hostOutput | Should -BeNullOrEmpty
+        $errors.Count | Should -Be 1
+        $errors[0].ToString() | Should -Match '\[Error\] boom$'
+    }
+
+    It 'Writes Warning messages to the warning stream, not the host' {
+        $warnings = $null
+        $hostOutput = Write-Log -Message 'careful' -Level Warning -WarningVariable warnings -WarningAction SilentlyContinue 6>&1
+        $hostOutput | Should -BeNullOrEmpty
+        $warnings.Count | Should -Be 1
+        [string]$warnings[0] | Should -Match '\[Warning\] careful$'
+    }
+
+    It 'Still logs Error messages to the file, even with -ErrorAction Stop' {
+        $path = Join-Path -Path $TestDrive -ChildPath 'error-stop.log'
+        { Write-Log -Message 'fatal' -Level Error -LogPath $path -ErrorAction Stop } | Should -Throw '*fatal*'
+        Get-Content -Path $path | Should -Match '\[Error\] fatal$'
+    }
 }
