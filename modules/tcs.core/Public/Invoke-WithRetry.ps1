@@ -175,12 +175,18 @@ function Invoke-WithRetry {
             if ($RetryOnNonTerminatingError) {
                 # Errors are merged into the output only to see them; an ErrorRecord that
                 # PowerShell also recorded as written (-ErrorVariable) fails the attempt.
-                # Errors caught or silenced inside the script block do not count.
+                # Errors caught or silenced inside the script block do not count, and stderr
+                # lines of native programs are passed on to the error stream.
+                $ErrorActionPreference = 'Continue'
                 $recordedErrors = $null
                 $firstWrittenError = $null
                 Invoke-ScriptBlockInChildScope -ScriptBlock $ScriptBlock -ErrorVariable recordedErrors 2>&1 | ForEach-Object -Process {
                     $item = $_
                     $isWrittenError = $false
+                    if (Test-NativeCommandErrorRecord -ErrorRecord $item) {
+                        $PSCmdlet.WriteError($item)
+                        return
+                    }
                     if ($item -is [System.Management.Automation.ErrorRecord]) {
                         foreach ($recorded in @($recordedErrors)) {
                             if ([object]::ReferenceEquals($recorded, $item)) {

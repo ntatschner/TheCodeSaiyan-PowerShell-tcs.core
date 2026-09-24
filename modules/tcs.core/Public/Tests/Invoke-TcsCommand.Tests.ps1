@@ -22,6 +22,15 @@ BeforeAll {
                 [System.Management.Automation.ErrorRecord]::new([System.Exception]::new('as data'), 'Data', 'NotSpecified', $null)
             }
         }
+        function Get-NativeStderr {
+            [CmdletBinding()]
+            param()
+            $shell = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+            Invoke-TcsCommand -ScriptBlock {
+                & $shell -NoProfile -NonInteractive -Command "[Console]::Out.WriteLine('stdout line'); [Console]::Error.WriteLine('stderr line')"
+                'done'
+            }
+        }
         function Set-Local { [CmdletBinding()] param() $value = 1; Invoke-TcsCommand -ScriptBlock { $value = 2 }; $value }
         function Test-ShouldProcess { [CmdletBinding(SupportsShouldProcess)] param() Invoke-TcsCommand -ScriptBlock { $PSCmdlet.ShouldProcess('target', 'action') } }
         function Get-Pipeline {
@@ -98,6 +107,27 @@ Describe 'Invoke-TcsCommand' {
         $output[0] | Should -Be 'handled'
         $output[1] | Should -BeOfType [System.Management.Automation.ErrorRecord]
         Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 1 -Exactly -ParameterFilter { ($Body | ConvertFrom-Json).success -eq $true }
+    }
+
+    It 'Passes native stderr lines to the error stream and does not count them as failures' {
+        $output = @(Get-NativeStderr 2>$null)
+        $output.Count | Should -Be 2
+        $output | Should -Be @('stdout line', 'done')
+        $errors = @(Get-NativeStderr 2>&1 | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
+        ($errors | ForEach-Object { $_.ToString() }) -join ' ' | Should -Match 'stderr line'
+        Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 2 -Exactly -ParameterFilter { ($Body | ConvertFrom-Json).success -eq $true }
+    }
+
+    It 'Passes errors on under the calling command''s error action, whatever the global preference' {
+        $saved = $global:ErrorActionPreference
+        try {
+            $global:ErrorActionPreference = 'Stop'
+            $output = Get-NonTerminating -ErrorAction Continue 2>$null
+        }
+        finally {
+            $global:ErrorActionPreference = $saved
+        }
+        $output | Should -Be 'after'
     }
 
     It 'Rethrows terminating errors unchanged and marks the run failed' {

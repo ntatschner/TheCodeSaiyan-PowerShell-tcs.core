@@ -103,6 +103,12 @@
 
     Invoke-TelemetryCollection is unchanged and still works for existing commands.
 
+    Lines that native programs in the script block write to stderr are passed on through the
+    error stream (without the wrapper, PowerShell 7 writes them straight to the console) and
+    never mark the run as failed. On Windows PowerShell 5.1, a native program that writes to
+    stderr while $ErrorActionPreference is 'Stop' raises a NativeCommandError, as it does
+    whenever its errors are redirected; use -ErrorAction Continue around such calls.
+
 .LINK
     Start-TcsTelemetry
 
@@ -148,9 +154,12 @@ function Invoke-TcsCommand {
 
     # The error stream is merged into the output only to watch it. An ErrorRecord that
     # PowerShell also recorded as a written error (-ErrorVariable) is written back to the error
-    # stream unchanged; everything else, including ErrorRecords output as data, is written to
-    # the output as it is (never unrolled). Errors that were caught or silenced inside the
-    # script block are recorded but never reach the stream, so they do not count.
+    # stream unchanged, as are stderr lines of native programs (which never count as
+    # failures); everything else, including ErrorRecords output as data, is written to the
+    # output as it is (never unrolled). Errors that were caught or silenced inside the script
+    # block are recorded but never reach the stream, so they do not count.
+    # The errors already passed the calling command's error action, so pass them on as they are.
+    $ErrorActionPreference = 'Continue'
     $recordedErrors = $null
     $firstWrittenError = $null
     $terminatingError = $null
@@ -158,19 +167,24 @@ function Invoke-TcsCommand {
     try {
         Invoke-TcsScriptBlock -ScriptBlock $ScriptBlock -ErrorVariable recordedErrors 2>&1 | ForEach-Object -Process {
             $item = $_
-            $isWrittenError = $false
+            $isError = $false
             if ($item -is [System.Management.Automation.ErrorRecord]) {
-                foreach ($recorded in @($recordedErrors)) {
-                    if ([object]::ReferenceEquals($recorded, $item)) {
-                        $isWrittenError = $true
-                        break
+                if (Test-NativeCommandErrorRecord -ErrorRecord $item) {
+                    $isError = $true
+                }
+                else {
+                    foreach ($recorded in @($recordedErrors)) {
+                        if ([object]::ReferenceEquals($recorded, $item)) {
+                            $isError = $true
+                            if ($null -eq $firstWrittenError) {
+                                $firstWrittenError = $item
+                            }
+                            break
+                        }
                     }
                 }
             }
-            if ($isWrittenError) {
-                if ($null -eq $firstWrittenError) {
-                    $firstWrittenError = $item
-                }
+            if ($isError) {
                 $PSCmdlet.WriteError($item)
             }
             else {

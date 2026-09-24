@@ -140,6 +140,18 @@ Describe 'Invoke-WithRetry output and HTTP handling' {
         $result[0] | Should -Be 'done'
     }
 
+    It 'Does not count native stderr lines as errors with -RetryOnNonTerminatingError' {
+        $shell = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+        $script:tries = 0
+        $output = @(Invoke-WithRetry -DelaySeconds 0 -RetryOnNonTerminatingError -ScriptBlock {
+                $script:tries++
+                & $shell -NoProfile -NonInteractive -Command "[Console]::Error.WriteLine('stderr line')"
+                'done'
+            } 2>$null)
+        $script:tries | Should -Be 1
+        $output | Should -Be @('done')
+    }
+
     It 'Throws the last non-terminating error when every attempt fails' {
         { Invoke-WithRetry -DelaySeconds 0 -MaxRetries 1 -RetryOnNonTerminatingError -ScriptBlock { Write-Error 'always' } } | Should -Throw 'always'
     }
