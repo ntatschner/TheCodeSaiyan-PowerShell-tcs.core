@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Build and test script for the tcs.core PowerShell module.
 

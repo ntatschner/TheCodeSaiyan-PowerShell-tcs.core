@@ -68,3 +68,15 @@ Describe 'ConvertTo-HashTable options' {
         $result.y.z[0][0] | Should -BeOfType [hashtable]
     }
 }
+
+Describe 'ConvertTo-HashTable deprecation' {
+    It 'Warns once per session and keeps working' {
+        InModuleScope tcs.core { $script:DeprecationWarningsShown.Clear() }
+        $warnings = $null
+        $first = [PSCustomObject]@{ A = 1 } | ConvertTo-HashTable -WarningVariable warnings -WarningAction SilentlyContinue
+        $null = [PSCustomObject]@{ A = 1 } | ConvertTo-HashTable -WarningVariable +warnings -WarningAction SilentlyContinue
+        $first.A | Should -Be 1
+        @($warnings).Count | Should -Be 1
+        [string]$warnings[0] | Should -Match 'ConvertTo-HashTable is deprecated and will be removed in tcs.core 1.0'
+    }
+}

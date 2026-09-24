@@ -121,3 +121,54 @@ jobs:
         with:
           name: pester-results-${{ matrix.name }}
           path: TestResults.xml
+
+  consumers:
+    # Imports each tcs module that depends on tcs.core against this tcs.core and runs its own
+    # smoke tests, so a change here cannot break the suite unnoticed.
+    name: Consumer (tcs.${{ matrix.consumer }}, ${{ matrix.runner.name }})
+    runs-on: ${{ matrix.runner.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        consumer: [ 'azure', 'jira', 'confluence', 'intune.packaging', 'utils' ]
+        runner:
+          - name: pwsh-windows
+            os: windows-latest
+            shell: pwsh
+          - name: pwsh-ubuntu
+            os: ubuntu-latest
+            shell: pwsh
+          - name: windows-powershell-5.1
+            os: windows-latest
+            shell: powershell
+    defaults:
+      run:
+        shell: ${{ matrix.runner.shell }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # tcs.utils is private: it needs a token with read access (CONSUMER_REPOS_TOKEN secret).
+      # Without one the checkout fails and the consumer is skipped with a warning.
+      - name: Check out tcs.${{ matrix.consumer }}
+        id: consumer
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ntatschner/TheCodeSaiyan-PowerShell-tcs.${{ matrix.consumer }}
+          path: consumer
+          token: ${{ secrets.CONSUMER_REPOS_TOKEN || github.token }}
+
+      - name: Fail when a public consumer cannot be checked out
+        if: steps.consumer.outcome != 'success' && matrix.consumer != 'utils'
+        run: |
+          Write-Error 'Could not check out tcs.${{ matrix.consumer }}.'
+          exit 1
+
+      - name: Skip a private consumer that cannot be checked out
+        if: steps.consumer.outcome != 'success' && matrix.consumer == 'utils'
+        run: Write-Output '::warning::tcs.${{ matrix.consumer }} was skipped because it could not be checked out. Add a CONSUMER_REPOS_TOKEN secret with read access to test it.'
+
+      - name: Import and smoke test tcs.${{ matrix.consumer }}
+        if: steps.consumer.outcome == 'success'
+        run: |
+          & (Join-Path $env:GITHUB_WORKSPACE '.github/scripts/consumer-smoke-tests.ps1') -ConsumerRoot (Join-Path $env:GITHUB_WORKSPACE 'consumer') -ModuleName 'tcs.${{ matrix.consumer }}'

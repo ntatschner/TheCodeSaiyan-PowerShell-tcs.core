@@ -9,7 +9,8 @@
     exist. The change also applies to the current session.
 
 .PARAMETER ModuleName
-    The name of the module to configure, for example 'tcs.core' or 'tcs.jira'.
+    The name of the module to configure, for example 'tcs.core' or 'tcs.jira'. Only letters,
+    digits, '.', '_' and '-' are allowed, and the name must start with a letter or digit.
 
 .PARAMETER ModuleConfigFilePath
     The full path of a settings file to update, instead of resolving it from ModuleName.
@@ -27,10 +28,21 @@
     The HTTPS ingestion endpoint for telemetry. An empty string clears it.
 
 .PARAMETER TelemetryApiKey
-    The API key sent to the telemetry endpoint in the X-API-Key header.
+    The API key sent to the telemetry endpoint in the X-API-Key header. It is stored encrypted
+    with Protect-ConfigValue (current user) and shown as '********' in -PassThru and
+    Get-ModuleConfig output. An empty string clears it.
+
+.PARAMETER Setting
+    A hashtable of settings to change, for settings that have no parameter of their own (for
+    example a module-specific setting from that module's Config/Module.Defaults.json). Each
+    value is converted to the type of its default; a value that cannot be converted is
+    rejected. A setting also passed as its own parameter (for example -Telemetry) uses the
+    parameter value.
 
 .PARAMETER Reset
-    Restores the settings file to the defaults before applying any other settings passed.
+    Restores the settings file to the defaults before applying any other settings passed. The
+    defaults include the module's own Config/Module.Defaults.json when the module is loaded or
+    installed.
 
 .PARAMETER PassThru
     Outputs the resulting settings as a hashtable.
@@ -41,7 +53,7 @@
 
 .OUTPUTS
     System.Collections.Hashtable
-    When PassThru is specified.
+    When PassThru is specified. The telemetry API key is masked.
 
 .EXAMPLE
     Set-ModuleConfig -ModuleName 'tcs.core' -UpdateWarning $false
@@ -52,6 +64,11 @@
     Set-ModuleConfig -ModuleName 'tcs.jira' -Telemetry $false
 
     Turns off telemetry for tcs.jira.
+
+.EXAMPLE
+    Set-ModuleConfig -ModuleName 'tcs.jira' -Setting @{ DefaultProject = 'OPS'; PageSize = 100 }
+
+    Changes module-specific settings that have no parameter of their own.
 
 .EXAMPLE
     Set-ModuleConfig -ModuleName 'tcs.core' -Reset -PassThru
@@ -71,6 +88,7 @@ function Set-ModuleConfig {
     param(
         [Parameter(Mandatory, Position = 0, ParameterSetName = 'ByName', HelpMessage = 'Name of the module to configure.')]
         [ValidateNotNullOrEmpty()]
+        [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')]
         [string]$ModuleName,
 
         [Parameter(Mandatory, ParameterSetName = 'ByPath', HelpMessage = 'Path of the module settings file.')]
@@ -96,6 +114,10 @@ function Set-ModuleConfig {
         [AllowEmptyString()]
         [string]$TelemetryApiKey,
 
+        [Parameter(HelpMessage = 'Other settings to change, as a hashtable.')]
+        [ValidateNotNull()]
+        [hashtable]$Setting,
+
         [Parameter(HelpMessage = 'Restore the default settings first.')]
         [switch]$Reset,
 
@@ -110,7 +132,13 @@ function Set-ModuleConfig {
         $ModuleName = Split-Path -Path (Split-Path -Path $ModuleConfigFilePath -Parent) -Leaf
     }
 
-    $defaults = Get-DefaultModuleConfig
+    # Use the module's own defaults too, so -Reset matches what Get-ModuleConfig creates
+    $modulePath = $null
+    if (Test-ModuleNameValid -Name $ModuleName) {
+        $modulePath = Resolve-ModuleBasePath -ModuleName $ModuleName
+    }
+    $defaults = Get-DefaultModuleConfig -ModulePath $modulePath
+
     $settings = @{}
     if ($Reset -or -not (Test-Path -LiteralPath $ModuleConfigFilePath)) {
         foreach ($key in $defaults.Keys) {
@@ -120,17 +148,35 @@ function Set-ModuleConfig {
     else {
         $existing = Read-JsonFileAsHashtable -Path $ModuleConfigFilePath
         foreach ($key in $existing.Keys) {
-            $settings[$key] = ConvertTo-ConfigValueType -Value $existing[$key] -DefaultValue $defaults[$key]
+            $settings[$key] = ConvertTo-ConfigValueType -Value $existing[$key] -DefaultValue $defaults[$key] -Key $key
         }
     }
 
+    $changes = @{}
+    if ($Setting) {
+        foreach ($key in $Setting.Keys) {
+            $name = [string]$key
+            if ([string]::IsNullOrWhiteSpace($name) -or $name -in $script:ReservedConfigKeys) {
+                throw "'$name' cannot be set; it describes the loaded module and is not stored."
+            }
+            $changes[$name] = ConvertTo-ConfigValueType -Value $Setting[$key] -DefaultValue $defaults[$name] -Key $name -Strict
+        }
+    }
     foreach ($name in @('UpdateWarning', 'UpdateCheckIntervalHours', 'Telemetry', 'TelemetryUri', 'TelemetryApiKey')) {
         if ($PSBoundParameters.ContainsKey($name)) {
-            $settings[$name] = $PSBoundParameters[$name]
+            $changes[$name] = $PSBoundParameters[$name]
         }
+    }
+    foreach ($name in $changes.Keys) {
+        $settings[$name] = $changes[$name]
     }
 
     if ($PSCmdlet.ShouldProcess($ModuleConfigFilePath, 'Update module settings')) {
+        # Never store the telemetry API key in plain text (a plain key saved by 0.3.0 is protected now)
+        $apiKey = [string]$settings['TelemetryApiKey']
+        if (-not [string]::IsNullOrEmpty($apiKey) -and -not $apiKey.StartsWith('tcs:v1:')) {
+            $settings['TelemetryApiKey'] = Protect-ConfigValue -Value $apiKey
+        }
         Write-JsonFile -Path $ModuleConfigFilePath -Data $settings
 
         # Keep the current session in step with the file
@@ -139,9 +185,10 @@ function Set-ModuleConfig {
                 $script:ModuleConfigCache[$ModuleName][$key] = $settings[$key]
             }
         }
+        $script:TelemetryConfigCache.Remove($ModuleName)
     }
 
     if ($PassThru) {
-        $settings
+        Get-MaskedModuleConfig -Config $settings
     }
 }

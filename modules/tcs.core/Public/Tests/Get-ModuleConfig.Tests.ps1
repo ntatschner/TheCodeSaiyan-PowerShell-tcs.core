@@ -51,6 +51,21 @@ Describe 'Get-ModuleConfig' {
         $config.Telemetry | Should -BeExactly $false
     }
 
+    It 'Falls back to the default for one invalid value and keeps the other settings' {
+        '{ "UpdateCheckIntervalHours": -5, "UpdateWarning": false, "Telemetry": "maybe" }' | Set-Content -Path $configFile
+        $config = Get-ModuleConfig -CommandPath $fakeFunction
+        $config.UpdateCheckIntervalHours | Should -Be 12
+        $config.UpdateWarning | Should -BeExactly $false
+        $config.Telemetry | Should -BeExactly $true
+    }
+
+    It 'Masks the telemetry API key in its output but keeps it for telemetry' {
+        '{ "TelemetryApiKey": "PLAINKEY" }' | Set-Content -Path $configFile
+        $config = Get-ModuleConfig -CommandPath $fakeFunction
+        $config.TelemetryApiKey | Should -Be '********'
+        InModuleScope tcs.core { $script:ModuleConfigCache['tcs.fake'].TelemetryApiKey } | Should -Be 'PLAINKEY'
+    }
+
     It 'Does not rewrite an existing settings file' {
         '{ "UpdateWarning": false }' | Set-Content -Path $configFile
         $before = (Get-Item $configFile).LastWriteTimeUtc

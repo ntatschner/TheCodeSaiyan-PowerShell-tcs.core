@@ -12,8 +12,9 @@ The shared base module for the TheCodeSaiyan PowerShell suite (tcs.azure, tcs.co
 
 - **Configuration management**: per-user JSON settings for every tcs module, with defaults
 - **Update notifications**: PowerShell Gallery version check, cached for a day
-- **Telemetry**: anonymous, opt-out usage telemetry for the tcs suite
-- **Secret protection**: encrypt config values with DPAPI (Windows) or AES-256 + HMAC (Linux/macOS)
+- **Telemetry**: anonymous, opt-out usage telemetry for the tcs suite, with a one-line command wrapper
+- **Secret protection**: encrypt config values with DPAPI (Windows) or AES-256 + HMAC (Linux/macOS), and save secrets per module
+- **HTTP**: HTTP-aware retries (status codes, `Retry-After`, jitter), error details on 5.1 and 7, Basic auth headers, query strings
 - **Logging and retries**: `Write-Log` and `Invoke-WithRetry`
 - **Utilities**: dynamic parameters, string casing, hashtable conversion, temp folders, elevation check
 - **Cross-platform**: Windows PowerShell 5.1 and PowerShell 7 on Windows, Linux and macOS
@@ -42,18 +43,40 @@ Import-Module ./TheCodeSaiyan-PowerShell-tcs.core/modules/tcs.core/tcs.core.psd1
 | Function | Purpose |
 | --- | --- |
 | `Get-ModuleConfig` | Returns the settings for the tcs module that owns the calling script |
-| `Set-ModuleConfig` | Changes a module's settings (`-WhatIf` supported) |
+| `Set-ModuleConfig` | Changes a module's settings, including module-specific ones with `-Setting` (`-WhatIf` supported) |
 | `Get-ModuleStatus` | Checks the PowerShell Gallery for a newer version (cached, never throws) |
-| `Invoke-TelemetryCollection` | Records anonymous usage telemetry for a command or module load |
-| `Get-ParameterValues` | Returns `$PSBoundParameters` without common parameters or nulls |
+| `Invoke-TcsCommand` | Runs a command body and records its telemetry (replaces the Start/End boilerplate) |
+| `Start-TcsTelemetry` / `Complete-TcsTelemetry` | Telemetry for pipeline functions (begin/end blocks) |
+| `Invoke-TelemetryCollection` | Records anonymous usage telemetry for a command or module load (low level) |
+| `Invoke-WithRetry` | Runs a script block with retries, backoff, jitter, HTTP status filters and `Retry-After` |
+| `Get-HttpErrorDetail` | Status code, body and `Retry-After` of a failed web request (5.1 and 7) |
+| `New-BasicAuthHeader` | Basic `Authorization` header from a `PSCredential` |
+| `ConvertTo-QueryString` | Escaped query string from a hashtable (ordered, arrays repeated) |
+| `Set-ModuleSecret` / `Get-ModuleSecret` / `Remove-ModuleSecret` | Save, read and delete encrypted secrets and credentials per module |
 | `Protect-ConfigValue` / `Unprotect-ConfigValue` | Encrypt and decrypt config values |
-| `Write-Log` | Timestamped, levelled console and file logging |
-| `Invoke-WithRetry` | Runs a script block with retries and exponential backoff |
+| `Write-Log` | Timestamped, levelled console and file logging (errors and warnings use the error and warning streams) |
 | `New-DynamicParameter` | Builds a `RuntimeDefinedParameter` for `DynamicParam` blocks |
-| `ConvertTo-CamelCase` / `PascalCase` / `KebabCase` / `SnakeCase` | String casing |
-| `ConvertTo-HashTable` | Converts objects (e.g. from `ConvertFrom-Json`) to hashtables |
+| `ConvertTo-CamelCase` / `PascalCase` / `KebabCase` / `SnakeCase` | String casing (`-PreserveAcronyms` on camel/Pascal) |
 | `New-TemporaryDirectory` | Creates a uniquely named temporary folder |
 | `Test-IsElevated` | Checks for Administrator (Windows) or root (Linux/macOS) |
+| `Get-ParameterValues` | Deprecated (removal planned in 1.0): use `$PSBoundParameters` |
+| `ConvertTo-HashTable` | Deprecated (removal planned in 1.0): use `ConvertFrom-Json -AsHashtable` on PowerShell 7 |
+
+### Use these instead of re-implementing them
+
+Modules in the tcs suite should call these tcs.core commands rather than keep their own copies:
+
+| Need | Use |
+| --- | --- |
+| Telemetry in every exported command | `Invoke-TcsCommand` (or `Start-TcsTelemetry` / `Complete-TcsTelemetry` for pipeline functions) |
+| Retrying REST calls on 429/5xx with `Retry-After` | `Invoke-WithRetry -RetryOnStatusCode 429, 502, 503, 504` |
+| Status code and body of a failed request on 5.1 and 7 | `Get-HttpErrorDetail` |
+| Basic authentication | `New-BasicAuthHeader` |
+| Building a query string | `ConvertTo-QueryString` |
+| Storing an API token or credential | `Set-ModuleSecret` / `Get-ModuleSecret` |
+| A scratch folder | `New-TemporaryDirectory` |
+| Checking for Administrator/root | `Test-IsElevated` |
+| Module settings | `Get-ModuleConfig` / `Set-ModuleConfig -Setting` |
 
 ### Examples
 
@@ -64,6 +87,22 @@ ConvertTo-CamelCase -Value 'XMLHttpRequest'      # xmlHttpRequest
 
 # Retry with exponential backoff: waits 1s, 2s, 4s between attempts
 Invoke-WithRetry -ScriptBlock { Invoke-RestMethod -Uri $uri } -MaxRetries 3 -DelaySeconds 1 -BackoffMultiplier 2
+
+# Retry only throttling and unavailable responses, honouring Retry-After, with jitter
+Invoke-WithRetry -ScriptBlock { Invoke-RestMethod -Uri $uri } -RetryOnStatusCode 429, 502, 503, 504 -JitterPercent 20
+
+# HTTP helpers
+$headers = New-BasicAuthHeader -Credential $credential
+$query = ConvertTo-QueryString ([ordered]@{ jql = 'project = OPS'; maxResults = 50 })
+try { Invoke-RestMethod -Uri "https://example.atlassian.net/rest/api/3/search?$query" -Headers $headers }
+catch { $detail = Get-HttpErrorDetail $_; "Failed: $($detail.StatusCode) $($detail.Body)" }
+
+# Telemetry for a command in a tcs module
+function Get-Widget {
+    [CmdletBinding()]
+    param([string]$Name)
+    Invoke-TcsCommand -ScriptBlock { Get-Item -Path $Name }
+}
 
 # Protect a secret for the current user
 $protected = Protect-ConfigValue -Value 'P@ssw0rd'
@@ -83,8 +122,13 @@ time the module loads. Change it with `Set-ModuleConfig`:
 ```powershell
 Set-ModuleConfig -ModuleName tcs.core -UpdateWarning $false     # no update warnings
 Set-ModuleConfig -ModuleName tcs.jira -Telemetry $false         # no telemetry for tcs.jira
-Set-ModuleConfig -ModuleName tcs.core -Reset                    # back to defaults
+Set-ModuleConfig -ModuleName tcs.core -Reset                    # back to defaults (including the module's own)
+Set-ModuleConfig -ModuleName tcs.jira -Setting @{ PageSize = 100 } # any other setting
 ```
+
+A setting with an invalid value (for example `UpdateCheckIntervalHours: -5`) falls back to its
+default; the other settings are still used. The telemetry API key is stored encrypted with
+`Protect-ConfigValue` and shown as `********`.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
@@ -113,6 +157,15 @@ Environment variables:
 
 Use `-Key` with a 32-byte key to protect values that must be decrypted on other machines.
 Values protected by tcs.core 0.2.x can still be decrypted; protect them again to upgrade them.
+
+Save a token or credential for a module (encrypted, in `<ModuleName>/Secrets/<Name>.json`):
+
+```powershell
+Set-ModuleSecret -ModuleName tcs.jira -Name ApiToken -SecureString (Read-Host -AsSecureString -Prompt 'Token')
+$token = Get-ModuleSecret -ModuleName tcs.jira -Name ApiToken      # SecureString
+Set-ModuleSecret -ModuleName tcs.confluence -Name Default -Credential (Get-Credential)
+$credential = Get-ModuleSecret -ModuleName tcs.confluence -Name Default   # PSCredential
+```
 
 ## 📖 Documentation
 
@@ -168,6 +221,9 @@ process. Report security issues as described in [SECURITY.md](SECURITY.md).
 This project uses GitHub Actions for automated testing and publishing:
 
 - **Pull Request Validation**: Runs on every PR to validate code quality and functionality
+- **Consumer checks**: imports tcs.azure, tcs.jira, tcs.confluence, tcs.intune.packaging and
+  tcs.utils against the tcs.core being changed and runs their smoke tests (tcs.utils needs a
+  `CONSUMER_REPOS_TOKEN` secret and is skipped without one)
 - **Automated Publishing**: Publishes to PowerShell Gallery when version tags are pushed
 - **Release Creation**: Automatically creates GitHub releases with release notes
 

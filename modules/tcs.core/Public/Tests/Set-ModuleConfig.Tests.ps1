@@ -62,10 +62,111 @@ Describe 'Set-ModuleConfig' {
         Test-Path -Path $configFile | Should -BeFalse
     }
 
+    It 'Uses the module''s own defaults with -Reset' {
+        $fakeModule = Join-Path -Path $TestDrive -ChildPath 'mods/tcs.resetfake'
+        $null = New-Item -Path (Join-Path $fakeModule 'Config') -ItemType Directory -Force
+        "@{ ModuleVersion = '1.0.0'; RootModule = 'tcs.resetfake.psm1' }" | Set-Content -Path (Join-Path $fakeModule 'tcs.resetfake.psd1')
+        '' | Set-Content -Path (Join-Path $fakeModule 'tcs.resetfake.psm1')
+        '{ "BaseUrl": "https://example.com", "UpdateWarning": false }' | Set-Content -Path (Join-Path $fakeModule 'Config/Module.Defaults.json')
+        $null = Get-ModuleConfig -CommandPath (Join-Path $fakeModule 'tcs.resetfake.psm1')
+        Set-ModuleConfig -ModuleName 'tcs.resetfake' -Setting @{ BaseUrl = 'https://other.example.com' } -UpdateWarning $true
+
+        $result = Set-ModuleConfig -ModuleName 'tcs.resetfake' -Reset -PassThru
+        $result.BaseUrl | Should -Be 'https://example.com'
+        $result.UpdateWarning | Should -BeFalse
+    }
+
+    It 'Finds the module defaults of an available module that is not loaded' {
+        $modules = Join-Path -Path $TestDrive -ChildPath 'psmodules'
+        $fakeModule = Join-Path -Path $modules -ChildPath 'tcs.availfake'
+        $null = New-Item -Path (Join-Path $fakeModule 'Config') -ItemType Directory -Force
+        "@{ ModuleVersion = '1.0.0'; RootModule = 'tcs.availfake.psm1' }" | Set-Content -Path (Join-Path $fakeModule 'tcs.availfake.psd1')
+        '' | Set-Content -Path (Join-Path $fakeModule 'tcs.availfake.psm1')
+        '{ "PageSize": 50 }' | Set-Content -Path (Join-Path $fakeModule 'Config/Module.Defaults.json')
+        $oldPath = $env:PSModulePath
+        try {
+            $env:PSModulePath = $modules + [System.IO.Path]::PathSeparator + $env:PSModulePath
+            $result = Set-ModuleConfig -ModuleName 'tcs.availfake' -Reset -PassThru
+            $result.PageSize | Should -Be 50
+            (Set-ModuleConfig -ModuleName 'tcs.availfake' -Setting @{ PageSize = '75' } -PassThru).PageSize | Should -BeExactly 75
+        }
+        finally {
+            $env:PSModulePath = $oldPath
+        }
+    }
+
+    It 'Sets arbitrary settings with -Setting, typed against the defaults' {
+        $result = Set-ModuleConfig -ModuleName 'tcs.test' -Setting @{ UpdateWarning = 'false'; CustomValue = 'abc' } -PassThru
+        $result.UpdateWarning | Should -BeExactly $false
+        $result.CustomValue | Should -Be 'abc'
+        (Get-Content -Path $configFile -Raw | ConvertFrom-Json).CustomValue | Should -Be 'abc'
+    }
+
+    It 'Lets explicit parameters win over -Setting' {
+        $result = Set-ModuleConfig -ModuleName 'tcs.test' -Setting @{ Telemetry = $true } -Telemetry $false -PassThru
+        $result.Telemetry | Should -BeFalse
+    }
+
+    It 'Rejects invalid values in -Setting' {
+        { Set-ModuleConfig -ModuleName 'tcs.test' -Setting @{ UpdateCheckIntervalHours = -5 } } | Should -Throw '*between 1 and 8760*'
+        { Set-ModuleConfig -ModuleName 'tcs.test' -Setting @{ Telemetry = 'maybe' } } | Should -Throw
+        { Set-ModuleConfig -ModuleName 'tcs.test' -Setting @{ TelemetryUri = 'http://example.com' } } | Should -Throw
+        { Set-ModuleConfig -ModuleName 'tcs.test' -Setting @{ ModulePath = 'x' } } | Should -Throw
+        Test-Path -Path $configFile | Should -BeFalse
+    }
+
+    It 'Rejects module names that are not a single safe folder name' -ForEach @(
+        @{ Name = '../../escaped' }, @{ Name = '..' }, @{ Name = 'a/b' }, @{ Name = 'a\b' }, @{ Name = '.hidden' }
+    ) {
+        { Set-ModuleConfig -ModuleName $Name -Telemetry $false } | Should -Throw
+        Test-Path -Path (Join-Path $TestDrive 'escaped') | Should -BeFalse
+    }
+
+    It 'Repairs an invalid stored value when saving' {
+        $null = New-Item -Path (Split-Path $configFile) -ItemType Directory -Force
+        '{ "UpdateCheckIntervalHours": -5 }' | Set-Content -Path $configFile
+        (Set-ModuleConfig -ModuleName 'tcs.test' -Telemetry $false -PassThru).UpdateCheckIntervalHours | Should -Be 24
+    }
+
     It 'Updates the configuration of the current session' {
         $null = Get-ModuleConfig -CommandPath (Join-Path $ModuleRoot 'tcs.core.psm1')
         Set-ModuleConfig -ModuleName 'tcs.core' -Telemetry $false
         InModuleScope tcs.core { $script:ModuleConfigCache['tcs.core'].Telemetry } | Should -BeFalse
         Set-ModuleConfig -ModuleName 'tcs.core' -Reset
+    }
+}
+
+Describe 'Set-ModuleConfig telemetry API key' {
+    BeforeEach {
+        $configFile = Join-Path -Path $env:TCS_CONFIG_ROOT -ChildPath 'tcs.keytest/Module.Config.json'
+        if (Test-Path -Path $configFile) { Remove-Item -Path $configFile -Force }
+    }
+
+    It 'Stores the key protected, never in plain text' {
+        Set-ModuleConfig -ModuleName 'tcs.keytest' -TelemetryApiKey 'SECRET123'
+        $raw = Get-Content -Path $configFile -Raw
+        $raw | Should -Not -Match 'SECRET123'
+        $stored = ($raw | ConvertFrom-Json).TelemetryApiKey
+        $stored | Should -Match '^tcs:v1:'
+        Unprotect-ConfigValue -EncryptedValue $stored | Should -BeExactly 'SECRET123'
+    }
+
+    It 'Masks the key in -PassThru output' {
+        $result = Set-ModuleConfig -ModuleName 'tcs.keytest' -TelemetryApiKey 'SECRET123' -PassThru
+        $result.TelemetryApiKey | Should -Be '********'
+        ($result | Out-String) | Should -Not -Match 'SECRET123'
+    }
+
+    It 'Protects a plain-text key left by an earlier version when saving' {
+        $null = New-Item -Path (Split-Path $configFile) -ItemType Directory -Force
+        '{ "TelemetryApiKey": "OLDPLAIN" }' | Set-Content -Path $configFile
+        Set-ModuleConfig -ModuleName 'tcs.keytest' -Telemetry $true
+        (Get-Content -Path $configFile -Raw) | Should -Not -Match 'OLDPLAIN'
+    }
+
+    It 'Clears the key with an empty string' {
+        Set-ModuleConfig -ModuleName 'tcs.keytest' -TelemetryApiKey 'SECRET123'
+        Set-ModuleConfig -ModuleName 'tcs.keytest' -TelemetryApiKey ''
+        (Get-Content -Path $configFile -Raw | ConvertFrom-Json).TelemetryApiKey | Should -BeExactly ''
     }
 }

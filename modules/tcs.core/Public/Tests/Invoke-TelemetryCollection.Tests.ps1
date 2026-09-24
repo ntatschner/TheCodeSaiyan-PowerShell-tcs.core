@@ -72,6 +72,46 @@ Describe 'Invoke-TelemetryCollection' {
         Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 0 -Exactly
     }
 
+    It 'Honours Telemetry = $false in the settings file when the module has not loaded its settings' {
+        InModuleScope tcs.core { $script:ModuleConfigCache.Remove('tcs.fileoff'); $script:TelemetryConfigCache.Clear() }
+        $folder = Join-Path -Path $env:TCS_CONFIG_ROOT -ChildPath 'tcs.fileoff'
+        $null = New-Item -Path $folder -ItemType Directory -Force
+        '{ "Telemetry": false }' | Set-Content -Path (Join-Path $folder 'Module.Config.json')
+        Invoke-TelemetryCollection -ModuleName 'tcs.fileoff' -ExecutionID 'e6b' -Stage Module-Load -URI $uri
+        Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 0 -Exactly
+    }
+
+    It 'Honours a telemetry opt-out made with Set-ModuleConfig in the same session' {
+        Invoke-TelemetryCollection -ModuleName 'tcs.lateoff' -ExecutionID 'e6c' -Stage Module-Load -URI $uri
+        Set-ModuleConfig -ModuleName 'tcs.lateoff' -Telemetry $false
+        Invoke-TelemetryCollection -ModuleName 'tcs.lateoff' -ExecutionID 'e6d' -Stage Module-Load -URI $uri
+        Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 1 -Exactly
+    }
+
+    It 'Uses the endpoint from the settings file when the module has not loaded its settings' {
+        InModuleScope tcs.core { $script:TelemetryConfigCache.Clear() }
+        $folder = Join-Path -Path $env:TCS_CONFIG_ROOT -ChildPath 'tcs.fileuri'
+        $null = New-Item -Path $folder -ItemType Directory -Force
+        '{ "TelemetryUri": "https://file.example.com/ingest" }' | Set-Content -Path (Join-Path $folder 'Module.Config.json')
+        Invoke-TelemetryCollection -ModuleName 'tcs.fileuri' -ExecutionID 'e6e' -Stage Module-Load
+        Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 1 -Exactly -ParameterFilter { $Uri -eq 'https://file.example.com/ingest' }
+    }
+
+    It 'Decrypts a protected API key before sending' {
+        Set-ModuleConfig -ModuleName 'tcs.keysend' -TelemetryApiKey 'SECRET-KEY' -TelemetryUri $uri
+        Invoke-TelemetryCollection -ModuleName 'tcs.keysend' -ExecutionID 'e6f' -Stage Module-Load
+        Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 1 -Exactly -ParameterFilter { $ApiKey -eq 'SECRET-KEY' }
+    }
+
+    It 'Still sends a plain-text API key saved by an earlier version' {
+        InModuleScope tcs.core { $script:TelemetryConfigCache.Clear() }
+        $folder = Join-Path -Path $env:TCS_CONFIG_ROOT -ChildPath 'tcs.plainkey'
+        $null = New-Item -Path $folder -ItemType Directory -Force
+        '{ "TelemetryApiKey": "PLAIN-KEY" }' | Set-Content -Path (Join-Path $folder 'Module.Config.json')
+        Invoke-TelemetryCollection -ModuleName 'tcs.plainkey' -ExecutionID 'e6g' -Stage Module-Load -URI $uri
+        Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 1 -Exactly -ParameterFilter { $ApiKey -eq 'PLAIN-KEY' }
+    }
+
     It 'Sends nothing when no endpoint is configured' {
         Invoke-TelemetryCollection -ModuleName 'tcs.x' -ExecutionID 'e7' -Stage Module-Load
         Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 0 -Exactly
@@ -97,5 +137,31 @@ Describe 'Invoke-TelemetryCollection' {
         $first = InModuleScope tcs.core { Get-TelemetryInstallationId }
         InModuleScope tcs.core { $script:TelemetryInstallationId = $null }
         InModuleScope tcs.core { Get-TelemetryInstallationId } | Should -Be $first
+    }
+}
+
+Describe 'Invoke-TelemetryCollection deprecations' {
+    BeforeEach {
+        InModuleScope tcs.core { $script:DeprecationWarningsShown.Clear() }
+    }
+
+    It 'Warns once per session for <Name>, and keeps working' -ForEach @(
+        @{ Name = '-ModulePath'; Arguments = @{ ModulePath = 'x'; Stage = 'Module-Load' }; Pattern = '-ModulePath is deprecated' }
+        @{ Name = '-Minimal'; Arguments = @{ Minimal = $true; Stage = 'Module-Load' }; Pattern = '-Minimal is deprecated' }
+        @{ Name = 'In-Progress'; Arguments = @{ Stage = 'In-Progress' }; Pattern = "'In-Progress' is deprecated" }
+    ) {
+        $warnings = $null
+        Invoke-TelemetryCollection -ExecutionID 'd1' @Arguments -WarningVariable warnings -WarningAction SilentlyContinue
+        Invoke-TelemetryCollection -ExecutionID 'd2' @Arguments -WarningVariable +warnings -WarningAction SilentlyContinue
+        @($warnings).Count | Should -Be 1
+        [string]$warnings[0] | Should -Match $Pattern
+        [string]$warnings[0] | Should -Match '1\.0'
+    }
+
+    It 'Does not warn for current usage' {
+        $warnings = $null
+        Invoke-TelemetryCollection -ExecutionID 'd3' -Stage Start -WarningVariable warnings -WarningAction SilentlyContinue
+        Invoke-TelemetryCollection -ExecutionID 'd3' -Stage End -WarningVariable +warnings -WarningAction SilentlyContinue
+        @($warnings).Count | Should -Be 0
     }
 }

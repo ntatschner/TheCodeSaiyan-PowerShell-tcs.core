@@ -1,10 +1,11 @@
-<#
+﻿<#
 .SYNOPSIS
     Converts a string to PascalCase format.
 
 .DESCRIPTION
     The ConvertTo-PascalCase function takes a string input and converts it to PascalCase format.
-    It splits the input on spaces, underscores, hyphens, and PascalCase boundaries, then
+    It splits the input on spaces, underscores, hyphens, case changes (including letters
+    outside A-Z, such as 'Ä') and a digit followed by a capital ('Version2Update'), then
     capitalizes the first letter of each word and lowercases the rest before joining them.
     This is useful for formatting class names, type names, or other identifiers that need
     to follow PascalCase naming conventions.
@@ -12,6 +13,11 @@
 .PARAMETER Value
     The string value to convert to PascalCase format. Accepts pipeline input and empty strings.
     If the value is null or empty, the function returns the original value unchanged.
+
+.PARAMETER PreserveAcronyms
+    Keeps words written in capitals (at least two capital letters, such as 'XML', 'FA' or
+    'HTML5') as they are instead of capitalising only their first letter: 'XMLHttpRequest'
+    becomes 'XMLHttpRequest' instead of 'XmlHttpRequest'.
 
 .INPUTS
     System.String
@@ -33,6 +39,14 @@
     "helloWorld" | ConvertTo-PascalCase
     Returns: "HelloWorld"
 
+.EXAMPLE
+    ConvertTo-PascalCase -Value 'user2FA'
+    Returns: "User2Fa"
+
+.EXAMPLE
+    ConvertTo-PascalCase -Value 'parse_XML_file' -PreserveAcronyms
+    Returns: "ParseXMLFile"
+
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
@@ -49,24 +63,24 @@ function ConvertTo-PascalCase {
     param(
         [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]
         [AllowEmptyString()]
-        [string]$Value
+        [string]$Value,
+
+        [Parameter(HelpMessage = 'Keep all-capitals words such as XML as they are.')]
+        [switch]$PreserveAcronyms
     )
 
     process {
         if ([string]::IsNullOrEmpty($Value)) {
             return $Value
         }
-        # Split on spaces, underscores, hyphens, and PascalCase boundaries
-        # @() keeps a single word as an array instead of a string
-        $words = @([regex]::Split($Value, '[\s_\-]+|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])') | Where-Object { $_ -ne '' })
+        # Split on spaces, underscores, hyphens, case changes and digit/capital boundaries
+        $words = Split-CaseWord -Value $Value
         if ($words.Count -eq 0) {
             return $Value
         }
         $result = ''
         foreach ($word in $words) {
-            if ($word.Length -gt 0) {
-                $result += $word.Substring(0, 1).ToUpperInvariant() + $word.Substring(1).ToLowerInvariant()
-            }
+            $result += ConvertTo-CapitalisedWord -Word $word -PreserveAcronyms:$PreserveAcronyms
         }
         return $result
     }

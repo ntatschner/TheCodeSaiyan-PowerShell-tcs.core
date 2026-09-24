@@ -87,23 +87,26 @@ function Get-ProtectionKey {
             $keyDirectory = Split-Path -Path $keyPath -Parent
             if (-not (Test-Path -LiteralPath $keyDirectory)) {
                 $null = New-Item -Path $keyDirectory -ItemType Directory -Force -ErrorAction Stop
-                if ($Scope -eq 'CurrentUser') {
-                    & chmod 700 $keyDirectory
+            }
+            $setPermissions = -not (Test-IsWindowsPlatform)
+            if ($setPermissions -and $Scope -eq 'CurrentUser') {
+                # Also when the folder already exists (it holds the settings files too)
+                & chmod 700 $keyDirectory
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to set permissions on '$keyDirectory'."
                 }
             }
 
             # Create the empty file and restrict it before any key material is written
             $null = New-Item -Path $keyPath -ItemType File -Force -ErrorAction Stop
-            if ($Scope -eq 'CurrentUser') {
-                & chmod 600 $keyPath
-            }
-            else {
+            if ($setPermissions) {
                 # LocalMachine semantics: any local user may decrypt, only root may change the key
-                & chmod 644 $keyPath
-            }
-            if ($LASTEXITCODE -ne 0) {
-                Remove-Item -LiteralPath $keyPath -Force -ErrorAction SilentlyContinue
-                throw "Failed to set permissions on '$keyPath'."
+                $fileMode = if ($Scope -eq 'CurrentUser') { '600' } else { '644' }
+                & chmod $fileMode $keyPath
+                if ($LASTEXITCODE -ne 0) {
+                    Remove-Item -LiteralPath $keyPath -Force -ErrorAction SilentlyContinue
+                    throw "Failed to set permissions on '$keyPath'."
+                }
             }
             [System.IO.File]::WriteAllText($keyPath, [Convert]::ToBase64String($key))
         }
@@ -257,4 +260,70 @@ function Unprotect-BytesWithKey {
     finally {
         $aes.Dispose()
     }
+}
+
+# ConvertFrom-SecureString -Key output starts with this marker (tcs.core 0.2.x LocalMachine values)
+$script:LegacyKeyedValueMarker = '76492d1116743f0423413b16050a5345'
+# Header of a DPAPI blob in hex (tcs.core 0.2.x CurrentUser values on Windows)
+$script:LegacyDpapiValueMarker = '01000000d08c9ddf0115d1118c7a00c04fc297eb'
+
+function ConvertFrom-LegacyProtectedValue {
+    <#
+    .SYNOPSIS
+        Decrypts a value protected by tcs.core 0.2.x (ConvertFrom-SecureString output) to a
+        SecureString, and throws a clear error for anything that is not in that format.
+    #>
+    [CmdletBinding()]
+    [OutputType([System.Security.SecureString])]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string]$Value
+    )
+
+    $isKeyed = $Value.StartsWith($script:LegacyKeyedValueMarker, [System.StringComparison]::OrdinalIgnoreCase)
+    $isUserValue = $false
+    if (-not $isKeyed -and $Value -match '^[0-9a-fA-F]+$') {
+        if (Test-IsWindowsPlatform) {
+            $isUserValue = $Value.StartsWith($script:LegacyDpapiValueMarker, [System.StringComparison]::OrdinalIgnoreCase)
+        }
+        else {
+            # PowerShell 7 on Linux/macOS wrote the UTF-16 text as hex: 4 hex digits per character
+            $isUserValue = ($Value.Length % 4) -eq 0
+        }
+    }
+    if (-not ($isKeyed -or $isUserValue)) {
+        throw "The value is not protected: it is neither a Protect-ConfigValue value ('$($script:ProtectedValuePrefix):...') nor a value protected by tcs.core 0.2.x."
+    }
+
+    Write-Warning 'This value uses the legacy tcs.core 0.2.x format. Protect it again with Protect-ConfigValue to use the stronger format.'
+
+    if (-not $isKeyed) {
+        return (ConvertTo-SecureString -String $Value -ErrorAction Stop)
+    }
+
+    # 0.2.x derived the LocalMachine key from $env:COMPUTERNAME, which is empty on Linux/macOS
+    $computerNames = New-Object System.Collections.Generic.List[string]
+    foreach ($name in @($env:COMPUTERNAME, [Environment]::MachineName, '')) {
+        $candidate = [string]$name
+        if (-not $computerNames.Contains($candidate)) {
+            $computerNames.Add($candidate)
+        }
+    }
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        foreach ($computerName in $computerNames) {
+            $legacyKey = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($computerName + 'tcs.core'))
+            try {
+                return (ConvertTo-SecureString -String $Value -Key $legacyKey -ErrorAction Stop)
+            }
+            catch {
+                Write-Verbose "The legacy value could not be decrypted with the key for computer name '$computerName'."
+            }
+        }
+    }
+    finally {
+        $sha256.Dispose()
+    }
+    throw 'The legacy LocalMachine value could not be decrypted on this machine.'
 }

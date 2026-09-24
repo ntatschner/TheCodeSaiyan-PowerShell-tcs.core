@@ -78,4 +78,36 @@ Describe 'Protect-ConfigValue format and platforms' {
     It 'Rejects keys that are not 32 bytes' {
         { Protect-ConfigValue -Value 'x' -Key (New-Object byte[] 16) } | Should -Throw
     }
+
+    Context 'Key file permissions' -Skip:($PSVersionTable.PSEdition -eq 'Desktop' -or $IsWindows) {
+        BeforeEach {
+            $env:TCS_CONFIG_ROOT = Join-Path -Path $TestDrive -ChildPath ('perm-' + [guid]::NewGuid().ToString('N'))
+        }
+
+        AfterAll {
+            $env:TCS_CONFIG_ROOT = Join-Path -Path $TestDrive -ChildPath 'config'
+        }
+
+        It 'Restricts an existing key folder to the owner when creating the key' {
+            $folder = Join-Path -Path $env:TCS_CONFIG_ROOT -ChildPath 'tcs.core'
+            $null = New-Item -Path $folder -ItemType Directory -Force
+            & chmod 755 $folder
+            $null = Protect-ConfigValue -Value 'x'
+            (Get-Item -LiteralPath $folder).UnixMode | Should -Be 'drwx------'
+            (Get-Item -LiteralPath (Join-Path $folder 'protection.key')).UnixMode | Should -Be '-rw-------'
+        }
+
+        It 'Fails, and leaves no key file, when the folder permissions cannot be set' {
+            Mock -ModuleName tcs.core chmod { $global:LASTEXITCODE = 1 }
+            { Protect-ConfigValue -Value 'x' } | Should -Throw '*permissions*'
+            Test-Path -LiteralPath (Join-Path $env:TCS_CONFIG_ROOT 'tcs.core/protection.key') | Should -BeFalse
+        }
+
+        It 'Fails, and leaves no key file, when the file permissions cannot be set' {
+            Mock -ModuleName tcs.core chmod { $global:LASTEXITCODE = 0 } -ParameterFilter { $args[0] -eq '700' }
+            Mock -ModuleName tcs.core chmod { $global:LASTEXITCODE = 1 } -ParameterFilter { $args[0] -eq '600' }
+            { Protect-ConfigValue -Value 'x' } | Should -Throw '*permissions*'
+            Test-Path -LiteralPath (Join-Path $env:TCS_CONFIG_ROOT 'tcs.core/protection.key') | Should -BeFalse
+        }
+    }
 }

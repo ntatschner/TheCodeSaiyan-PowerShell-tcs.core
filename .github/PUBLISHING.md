@@ -65,6 +65,12 @@ The workflow performs these validation steps:
 - ✅ **Import Testing**: Ensures the module imports without errors
 - ✅ **Version Checking**: Verifies version doesn't already exist in PowerShell Gallery
 
+Pull requests also run the **consumer checks** in `ci-validate.yml`: every tcs module that
+depends on tcs.core (tcs.azure, tcs.jira, tcs.confluence, tcs.intune.packaging, tcs.utils) is
+imported against the tcs.core being changed and its own smoke tests are run. tcs.utils is a
+private repository; add a `CONSUMER_REPOS_TOKEN` repository secret (a token with read access to
+it) to include it, otherwise it is skipped with a warning.
+
 ### 2. Publishing Stage
 
 If validation passes:

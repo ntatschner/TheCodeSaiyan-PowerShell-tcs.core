@@ -35,6 +35,12 @@ Describe 'tcs.core module' {
         ($Module.ExportedFunctions.Keys | Sort-Object) | Should -Be $publicFiles
     }
 
+    It 'Has identical en-GB and en-US about help' {
+        $enGB = Get-Content -Path (Join-Path $ModuleRoot 'en-GB/about_tcs.core.help.txt') -Raw
+        $enUS = Get-Content -Path (Join-Path $ModuleRoot 'en-US/about_tcs.core.help.txt') -Raw
+        $enUS | Should -BeExactly $enGB
+    }
+
     It 'Does not export private helpers' {
         $Module.ExportedFunctions.Keys | Should -Not -Contain 'Send-TelemetryPayload'
         $Module.ExportedFunctions.Keys | Should -Not -Contain 'ConvertTo-HashTableValue'
@@ -42,6 +48,14 @@ Describe 'tcs.core module' {
 
     It 'Does not write to the pipeline when imported' {
         $output = & (Get-Command pwsh, powershell -ErrorAction SilentlyContinue | Select-Object -First 1).Source -NoProfile -NonInteractive -Command "`$env:TCS_CONFIG_ROOT='$($env:TCS_CONFIG_ROOT)'; `$env:TCS_SKIP_UPDATE_CHECK='1'; Import-Module '$ManifestPath' 6>`$null; 'done'"
+        $output | Should -Be 'done'
+    }
+
+    It 'Imports without warnings when one setting is invalid' {
+        $root = Join-Path -Path $TestDrive -ChildPath 'badconfig'
+        $null = New-Item -Path (Join-Path $root 'tcs.core') -ItemType Directory -Force
+        '{ "UpdateCheckIntervalHours": -5, "UpdateWarning": true }' | Set-Content -Path (Join-Path $root 'tcs.core/Module.Config.json')
+        $output = & (Get-Command pwsh, powershell -ErrorAction SilentlyContinue | Select-Object -First 1).Source -NoProfile -NonInteractive -Command "`$env:TCS_CONFIG_ROOT='$root'; `$env:TCS_SKIP_UPDATE_CHECK='1'; Import-Module '$ManifestPath' 3>&1 6>`$null; 'done'"
         $output | Should -Be 'done'
     }
 }

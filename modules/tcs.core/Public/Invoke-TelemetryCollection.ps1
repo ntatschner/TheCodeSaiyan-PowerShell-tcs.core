@@ -16,13 +16,15 @@
 
     Nothing is sent when:
       - the TCS_TELEMETRY_OPTOUT environment variable is 1, true or yes;
-      - the module's Telemetry setting is $false (Set-ModuleConfig -Telemetry $false);
+      - the module's Telemetry setting is $false (Set-ModuleConfig -Telemetry $false). The
+        setting is read from the module's settings file even if the module has not called
+        Get-ModuleConfig in this session;
       - no endpoint is configured (-URI, TCS_TELEMETRY_URI, or the TelemetryUri setting);
       - the endpoint is not HTTPS (http://localhost is allowed for testing).
 
     Stages:
       Start        starts the timer for ExecutionID (nothing is sent)
-      In-Progress  no action (kept for compatibility)
+      In-Progress  no action; deprecated (warns once per session), removal planned in 1.0
       End          stops the timer and sends the event
       Module-Load  sends an event with a duration of 0
 
@@ -55,16 +57,19 @@
     Overrides the ingestion endpoint, e.g. https://telemetry.example.com/ingest/powershell.
 
 .PARAMETER ApiKey
-    Overrides the API key sent in the X-API-Key header.
+    Overrides the API key sent in the X-API-Key header. A value protected with
+    Protect-ConfigValue is decrypted before it is sent.
 
 .PARAMETER Tags
     Extra low-cardinality tags to send with the event.
 
 .PARAMETER ModulePath
-    Deprecated and ignored. Paths are no longer sent because they can contain user names.
+    Deprecated and ignored (warns once per session); removal planned in tcs.core 1.0. Paths
+    are no longer sent because they can contain user names.
 
 .PARAMETER Minimal
-    Deprecated and ignored. All telemetry is now minimal.
+    Deprecated and ignored (warns once per session); removal planned in tcs.core 1.0. All
+    telemetry is now minimal.
 
 .INPUTS
     None
@@ -90,6 +95,12 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
+
+    New commands should use Invoke-TcsCommand, or Start-TcsTelemetry and
+    Complete-TcsTelemetry, instead of calling this function directly.
+
+.LINK
+    Invoke-TcsCommand
 #>
 function Invoke-TelemetryCollection {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ModulePath',
@@ -133,14 +144,21 @@ function Invoke-TelemetryCollection {
 
     # Telemetry must never break the caller
     try {
+        if ($PSBoundParameters.ContainsKey('ModulePath')) {
+            Write-DeprecationWarning -Feature 'Invoke-TelemetryCollection -ModulePath' -Message 'It is ignored; remove it.'
+        }
+        if ($PSBoundParameters.ContainsKey('Minimal')) {
+            Write-DeprecationWarning -Feature 'Invoke-TelemetryCollection -Minimal' -Message 'It is ignored; remove it.'
+        }
+        if ($Stage -eq 'In-Progress') {
+            Write-DeprecationWarning -Feature "Invoke-TelemetryCollection -Stage 'In-Progress'" -Message 'It does nothing; remove the call.'
+        }
+
         if (Test-TelemetryOptOut) {
             return
         }
 
-        $config = $script:ModuleConfigCache[$ModuleName]
-        if (-not $config) {
-            $config = Get-DefaultModuleConfig
-        }
+        $config = Get-TelemetryModuleConfig -ModuleName $ModuleName
         if ($config['Telemetry'] -eq $false) {
             return
         }
@@ -182,6 +200,8 @@ function Invoke-TelemetryCollection {
         $key = $ApiKey
         if ([string]::IsNullOrEmpty($key)) { $key = $env:TCS_TELEMETRY_APIKEY }
         if ([string]::IsNullOrEmpty($key)) { $key = [string]$config['TelemetryApiKey'] }
+        # Keys saved by Set-ModuleConfig are protected; decrypt only now, just before sending
+        $key = Resolve-TelemetryApiKey -Value $key
 
         $errorType = $null
         if ($Failed -or $Exception) {

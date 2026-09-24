@@ -16,8 +16,13 @@
     The settings file is created with the defaults the first time a module is loaded so users
     can edit it. After that it is only read; change settings with Set-ModuleConfig.
 
+    A value that cannot be read as the type of its default, or that is out of range (for
+    example UpdateCheckIntervalHours below 1), is replaced by the default for that setting
+    only; the other settings in the file are still used.
+
     The returned hashtable also contains ModuleName, ModulePath, ModuleVersion,
-    ModuleConfigPath and ModuleConfigFilePath.
+    ModuleConfigPath and ModuleConfigFilePath. The telemetry API key, if one is set, is shown
+    as '********'.
 
 .PARAMETER CommandPath
     The path of the calling script or module file, normally $PSCommandPath. When omitted, the
@@ -89,7 +94,7 @@ function Get-ModuleConfig {
         try {
             $userConfig = Read-JsonFileAsHashtable -Path $moduleConfigFilePath
             foreach ($key in $userConfig.Keys) {
-                $config[$key] = ConvertTo-ConfigValueType -Value $userConfig[$key] -DefaultValue $defaults[$key]
+                $config[$key] = ConvertTo-ConfigValueType -Value $userConfig[$key] -DefaultValue $defaults[$key] -Key $key
             }
         }
         catch {
@@ -117,5 +122,6 @@ function Get-ModuleConfig {
     $config['ModuleConfigFilePath'] = $moduleConfigFilePath
 
     $script:ModuleConfigCache[$moduleName] = $config
-    return $config
+    # The session cache keeps the stored API key for telemetry; callers only see it masked
+    return (Get-MaskedModuleConfig -Config $config)
 }

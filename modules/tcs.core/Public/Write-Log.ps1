@@ -4,8 +4,8 @@
 
 .DESCRIPTION
     The Write-Log function provides structured logging with severity levels, timestamps,
-    and optional component prefixes. Messages can be written to the console with color-coded
-    output, to a log file, or both. The function supports pipeline input for batch logging
+    and optional component prefixes. Messages can be written to the console, to a log file,
+    or both. The function supports pipeline input for batch logging
     and uses appropriate PowerShell output streams for Debug and Verbose levels.
 
 .PARAMETER Message
@@ -14,8 +14,10 @@
 
 .PARAMETER Level
     The severity level of the log message. Valid values are 'Info', 'Warning', 'Error',
-    'Debug', and 'Verbose'. Defaults to 'Info'. Debug and Verbose levels use their
-    respective PowerShell output streams (Write-Debug, Write-Verbose) for console output.
+    'Debug', and 'Verbose'. Defaults to 'Info'. Info is written to the host in colour; the
+    other levels use their PowerShell streams: Warning uses Write-Warning, Error uses
+    Write-Error (a non-terminating error, so -ErrorAction and $ErrorActionPreference apply),
+    Debug uses Write-Debug and Verbose uses Write-Verbose.
 
 .PARAMETER LogPath
     An optional file path to append the formatted log message to. If the file or its parent
@@ -54,8 +56,8 @@
 .EXAMPLE
     Write-Log -Message "Connection failed" -Level Error -Component "Network" -LogPath "C:\Logs\app.log"
 
-    Writes an Error-level message with a component prefix to both the console (in red) and
-    the specified log file.
+    Writes an Error-level message with a component prefix to the error stream and to the
+    specified log file.
 
 .EXAMPLE
     "Step 1 complete", "Step 2 complete" | Write-Log -Level Info -LogPath "C:\Logs\steps.log" -NoConsole
@@ -67,14 +69,18 @@
     Company: TheCodeSaiyan
 
     File writes append with shared read/write access, so several processes can log to the
-    same file. Files are written as UTF-8 without a byte order mark.
+    same file. Files are written as UTF-8 without a byte order mark. The file is written
+    before the console output.
+
+    Since tcs.core 0.4.0, Warning and Error levels use the warning and error streams instead
+    of coloured host text, so they can be captured, redirected and suppressed.
 
 .LINK
     https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/
 #>
 function Write-Log {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '',
-        Justification = 'Coloured console output is the purpose of this function; Write-Host writes to the information stream (6) on PowerShell 5+.')]
+        Justification = 'Info messages are coloured host output; Write-Host writes to the information stream (6) on PowerShell 5+.')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidOverwritingBuiltInCmdlets', '',
         Justification = 'Write-Log is not a built-in command in current PowerShell versions; the name is part of the public API.')]
     [CmdletBinding()]
@@ -118,26 +124,6 @@ function Write-Log {
             $formattedMessage = "[$timestamp][$Level][$Component] $Message"
         }
 
-        if (-not $NoConsole) {
-            switch ($Level) {
-                'Info' {
-                    Write-Host $formattedMessage -ForegroundColor Cyan
-                }
-                'Warning' {
-                    Write-Host $formattedMessage -ForegroundColor Yellow
-                }
-                'Error' {
-                    Write-Host $formattedMessage -ForegroundColor Red
-                }
-                'Debug' {
-                    Write-Debug $formattedMessage
-                }
-                'Verbose' {
-                    Write-Verbose $formattedMessage
-                }
-            }
-        }
-
         if ($LogPath) {
             $logDirectory = Split-Path -Path $LogPath -Parent
             if ($logDirectory -and -not (Test-Path -Path $logDirectory)) {
@@ -152,6 +138,27 @@ function Write-Log {
             }
             finally {
                 $stream.Dispose()
+            }
+        }
+
+        # Written after the file, so the line is logged even if -ErrorAction Stop turns the error into an exception
+        if (-not $NoConsole) {
+            switch ($Level) {
+                'Info' {
+                    Write-Host $formattedMessage -ForegroundColor Cyan
+                }
+                'Warning' {
+                    Write-Warning -Message $formattedMessage
+                }
+                'Error' {
+                    Write-Error -Message $formattedMessage -Category NotSpecified -ErrorId 'WriteLogError'
+                }
+                'Debug' {
+                    Write-Debug $formattedMessage
+                }
+                'Verbose' {
+                    Write-Verbose $formattedMessage
+                }
             }
         }
 

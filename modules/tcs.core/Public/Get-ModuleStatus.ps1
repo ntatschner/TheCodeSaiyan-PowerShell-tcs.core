@@ -21,7 +21,8 @@
     Writes a warning when an update is available.
 
 .PARAMETER ModuleName
-    The name of the module as published in the PowerShell Gallery.
+    The name of the module as published in the PowerShell Gallery. Only letters, digits, '.',
+    '_' and '-' are allowed.
 
 .PARAMETER ModulePath
     The folder that contains the module manifest (<ModuleName>.psd1).
@@ -65,6 +66,7 @@ function Get-ModuleStatus {
         [switch]$ShowMessage,
 
         [ValidateNotNullOrEmpty()]
+        [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')]
         [Parameter(Mandatory)]
         [string]$ModuleName,
 

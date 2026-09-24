@@ -1,10 +1,11 @@
-<#
+﻿<#
 .SYNOPSIS
     Converts a string to snake_case format.
 
 .DESCRIPTION
     The ConvertTo-SnakeCase function takes a string input and converts it to snake_case format.
-    It splits the input on spaces, underscores, hyphens, and PascalCase boundaries, then
+    It splits the input on spaces, underscores, hyphens, case changes (including letters
+    outside A-Z, such as 'Ä') and a digit followed by a capital ('Version2Update'), then
     lowercases each word and joins them with underscores. This is useful for formatting
     database column names, Python-style identifiers, or other identifiers that need to follow
     snake_case naming conventions.
@@ -56,9 +57,8 @@ function ConvertTo-SnakeCase {
         if ([string]::IsNullOrEmpty($Value)) {
             return $Value
         }
-        # Split on spaces, underscores, hyphens, and PascalCase boundaries
-        # @() keeps a single word as an array instead of a string
-        $words = @([regex]::Split($Value, '[\s_\-]+|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])') | Where-Object { $_ -ne '' })
+        # Split on spaces, underscores, hyphens, case changes and digit/capital boundaries
+        $words = Split-CaseWord -Value $Value
         if ($words.Count -eq 0) {
             return $Value
         }
