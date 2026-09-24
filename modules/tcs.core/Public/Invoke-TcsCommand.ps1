@@ -107,7 +107,8 @@
     error stream (without the wrapper, PowerShell 7 writes them straight to the console) and
     never mark the run as failed. On Windows PowerShell 5.1, a native program that writes to
     stderr while $ErrorActionPreference is 'Stop' raises a NativeCommandError, as it does
-    whenever its errors are redirected; use -ErrorAction Continue around such calls.
+    whenever its errors are redirected; set $ErrorActionPreference = 'Continue' inside the
+    script block before such calls.
 
 .LINK
     Start-TcsTelemetry

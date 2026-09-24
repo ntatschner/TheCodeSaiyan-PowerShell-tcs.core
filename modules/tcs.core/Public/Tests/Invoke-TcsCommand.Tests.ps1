@@ -27,6 +27,8 @@ BeforeAll {
             param()
             $shell = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
             Invoke-TcsCommand -ScriptBlock {
+                # Windows PowerShell 5.1 turns redirected stderr into a terminating error under 'Stop'
+                $ErrorActionPreference = 'Continue'
                 & $shell -NoProfile -NonInteractive -Command "[Console]::Out.WriteLine('stdout line'); [Console]::Error.WriteLine('stderr line')"
                 'done'
             }
@@ -111,8 +113,6 @@ Describe 'Invoke-TcsCommand' {
     }
 
     It 'Passes native stderr lines to the error stream and does not count them as failures' {
-        # Windows PowerShell 5.1 turns redirected stderr into a terminating error under 'Stop'
-        $ErrorActionPreference = 'Continue'
         $output = @(Get-NativeStderr 2>$null)
         $output.Count | Should -Be 2
         $output | Should -Be @('stdout line', 'done')
