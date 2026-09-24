@@ -99,7 +99,14 @@ function Set-ModuleSecret {
     }
 
     try {
-        $protected = Protect-ConfigValue -Value $plainText -Scope $Scope
+        # An empty secret (for example a credential without a password) is stored as empty
+        $protected = ''
+        if (-not [string]::IsNullOrEmpty($plainText)) {
+            $protected = Protect-ConfigValue -Value $plainText -Scope $Scope -ErrorAction Stop
+            if ([string]::IsNullOrEmpty($protected)) {
+                throw "The secret '$Name' could not be protected."
+            }
+        }
     }
     finally {
         $plainText = $null

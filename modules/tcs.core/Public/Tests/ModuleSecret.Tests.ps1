@@ -42,6 +42,16 @@ Describe 'Set-ModuleSecret, Get-ModuleSecret and Remove-ModuleSecret' {
         $result.GetNetworkCredential().Password | Should -BeExactly 'p@ss'
     }
 
+    It 'Saves an empty secret and a credential without a password' {
+        Set-ModuleSecret -ModuleName 'tcs.secrets' -Name 'Empty' -SecureString (New-Object System.Security.SecureString)
+        (Get-ModuleSecret -ModuleName 'tcs.secrets' -Name 'Empty').Length | Should -Be 0
+        $noPassword = New-Object System.Management.Automation.PSCredential -ArgumentList 'user', (New-Object System.Security.SecureString)
+        Set-ModuleSecret -ModuleName 'tcs.secrets' -Name 'NoPassword' -Credential $noPassword
+        $result = Get-ModuleSecret -ModuleName 'tcs.secrets' -Name 'NoPassword'
+        $result.UserName | Should -Be 'user'
+        $result.Password.Length | Should -Be 0
+    }
+
     It 'Keeps secrets separate per module and per name' {
         Set-ModuleSecret -ModuleName 'tcs.other' -Name 'ApiToken' -SecureString (ConvertTo-SecureString -String 'other' -AsPlainText -Force)
         (Get-ModuleSecret -ModuleName 'tcs.secrets' -Name 'ApiToken' | ForEach-Object { (New-Object System.Net.NetworkCredential -ArgumentList '', $_).Password }) | Should -Be 'token-123'

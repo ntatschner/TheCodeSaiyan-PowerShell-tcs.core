@@ -67,7 +67,13 @@ function Get-ModuleSecret {
 
     try {
         $data = Read-JsonFileAsHashtable -Path $path
-        $secureString = Unprotect-ConfigValue -EncryptedValue ([string]$data['Value']) -AsSecureString -ErrorAction Stop
+        $value = [string]$data['Value']
+        if ([string]::IsNullOrEmpty($value)) {
+            $secureString = New-Object System.Security.SecureString
+        }
+        else {
+            $secureString = Unprotect-ConfigValue -EncryptedValue $value -AsSecureString -ErrorAction Stop
+        }
         if ($data['Type'] -eq 'PSCredential') {
             return (New-Object System.Management.Automation.PSCredential -ArgumentList ([string]$data['UserName']), $secureString)
         }
