@@ -35,7 +35,6 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.2.0
 
     This function is part of the tcs.core module and provides a cross-platform way to
     check for elevated privileges in PowerShell 7+ environments.

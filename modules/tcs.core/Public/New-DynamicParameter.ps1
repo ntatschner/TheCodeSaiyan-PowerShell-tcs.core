@@ -77,11 +77,11 @@
 .EXAMPLE
     # Create a simple string parameter
     $dynParam = New-DynamicParameter -Name "ServerName" -ParameterType ([string]) -Mandatory
-    
+
 .EXAMPLE
     # Create a parameter with validation set
     $dynParam = New-DynamicParameter -Name "Environment" -ParameterType ([string]) -ValidateSet @("Dev", "Test", "Prod") -Mandatory
-    
+
 .EXAMPLE
     # Create a parameter with custom validation script
     $script = { $_ -match '^[A-Z]{2,3}$' }
@@ -92,14 +92,14 @@
     function Test-Function {
         [CmdletBinding()]
         param()
-        
+
         DynamicParam {
             $paramDict = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
             $dynParam = New-DynamicParameter -Name "DynamicParam" -ParameterType ([string]) -Mandatory
             $paramDict.Add($dynParam.Name, $dynParam.Parameter)
             return $paramDict
         }
-        
+
         process {
             $dynamicValue = $PSBoundParameters['DynamicParam']
             Write-Output "Dynamic parameter value: $dynamicValue"
@@ -125,32 +125,34 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.2.0
-    
+
     This function is part of the tcs.core module and is designed to simplify the creation
     of dynamic parameters in advanced PowerShell functions. It handles the complex
     RuntimeDefinedParameter creation process and attribute configuration automatically.
 
 .LINK
     about_Functions_Advanced_Parameters
-    
+
 .LINK
     about_Functions_DynamicParameters
 #>
 function New-DynamicParameter {
-    [CmdletBinding(DefaultParameterSetName = 'Core')]    
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Only builds an in-memory parameter object; no system state is changed.')]
+    [CmdletBinding(DefaultParameterSetName = 'Core')]
+    [OutputType([PSCustomObject])]
     param (
         [Parameter(Mandatory, ValueFromPipeline)]
         [string]
         $Name,
-        
+
         [Parameter(Mandatory)]
         [System.Type]
         $ParameterType,
 
         [string]
         $ParameterSetName = '__AllParameterSets',
-        
+
         [switch]
         $Mandatory,
 
@@ -183,10 +185,12 @@ function New-DynamicParameter {
         $ValidatePattern,
 
         [Parameter(Mandatory, ParameterSetName = 'ValidateRange')]
+        [ValidateCount(2, 2)]
         [int[]]
         $ValidateRange,
 
         [Parameter(Mandatory, ParameterSetName = 'ValidateLength')]
+        [ValidateCount(2, 2)]
         [int[]]
         $ValidateLength,
 

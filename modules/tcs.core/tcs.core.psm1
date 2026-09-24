@@ -1,50 +1,43 @@
-#region get public and private function definition files.
-$Public  = @(
-    Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue -Recurse
-)
-$Private = @(
-    Get-ChildItem -Path $PSScriptRoot\Private\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue -Recurse
-)
-#endregion
+# Root folder of tcs.core, used by helpers that need files shipped with the module
+$script:TcsCoreModuleRoot = $PSScriptRoot
 
-#region load Classes before functions
-$ClassFiles = @(
-    Get-ChildItem -Path $PSScriptRoot\Classes\*.ps1 -Exclude "*.Tests.ps1" -ErrorAction SilentlyContinue -Recurse
-)
-foreach ($Class in $ClassFiles) {
+#region load classes, then private and public functions
+$ClassFiles = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Classes') -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike '*.Tests.ps1' })
+$Private = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Private') -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike '*.Tests.ps1' })
+$Public = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Public') -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike '*.Tests.ps1' })
+
+foreach ($File in @($ClassFiles + $Private + $Public)) {
     try {
-        . $Class.FullName
-    } catch {
-        Write-Error -Message "Failed to import class at $($Class.FullName): $_"
+        . $File.FullName
+    }
+    catch {
+        Write-Error -Message "Failed to import '$($File.FullName)': $_"
     }
 }
 #endregion
 
-#region source the files
-foreach ($Function in @($Public + $Private)) {
-    $FunctionPath = $Function.fullname
-    try {
-	. $FunctionPath
-    } catch {
-	Write-Error -Message "Failed to import function at $($FunctionPath): $_"
-    }
-}
-#endregion
-
-#region Module Config setup and import
+#region module config and update check (never blocks import)
 try {
     $CurrentConfig = Get-ModuleConfig -CommandPath $PSCommandPath -ErrorAction Stop
+    if ($CurrentConfig.UpdateWarning -eq $true) {
+        $null = Get-ModuleStatus -ShowMessage -ModuleName $CurrentConfig.ModuleName -ModulePath $CurrentConfig.ModulePath -CacheHours $CurrentConfig.UpdateCheckIntervalHours
+    }
 }
 catch {
-    Write-Error "Module Import error: `n $($_.Exception.Message)"
-}
-
-if ($CurrentConfig.UpdateWarning -eq 'True' -or $CurrentConfig.UpdateWarning -eq $true) {
-    Get-ModuleStatus -ShowMessage -ModuleName $CurrentConfig.ModuleName -ModulePath $CurrentConfig.ModulePath
+    Write-Warning "tcs.core configuration could not be loaded; defaults will be used. $($_.Exception.Message)"
 }
 #endregion
 
-#region export Public functions ($Public.BaseName) for WIP modules
-Export-ModuleMember -Function $Public.Basename
-Export-ModuleMember -Function Invoke-TelemetryCollection, Get-ModuleConfig, Get-ModuleStatus, Get-ParameterValues
+#region clean up when the module is removed
+$ExecutionContext.SessionState.Module.OnRemove = {
+    if ($script:TelemetryHttpClient) {
+        $script:TelemetryHttpClient.Dispose()
+        $script:TelemetryHttpClient = $null
+    }
+}
 #endregion
+
+Export-ModuleMember -Function $Public.BaseName

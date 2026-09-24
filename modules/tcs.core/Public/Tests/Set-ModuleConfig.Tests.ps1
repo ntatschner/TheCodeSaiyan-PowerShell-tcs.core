@@ -1,39 +1,71 @@
 BeforeAll {
-	$TestPath = Split-Path -Parent -Path $PSScriptRoot
-
-	$FunctionFileName = (Split-Path -Leaf $PSCommandPath ) -replace '\.Tests\.', '.'
-
-	# You can use this Variable to call your function via it's name or ignore/remove as required
-	$FunctionName = $FunctionFileName.Replace('.ps1', '')
-	
-	. $(Join-Path -Path $TestPath -ChildPath $FunctionFileName)
-}
-Describe -Name "Performing basic validation test on function $FunctionFileName" {
-	It "Function $FunctionFileName - Testing Command Output Object" {
-		# This is a template for the Pester Test, add any tests you want here
-	}
+    $env:TCS_CONFIG_ROOT = Join-Path -Path $TestDrive -ChildPath 'config'
+    $env:TCS_SKIP_UPDATE_CHECK = '1'
+    $env:TCS_TELEMETRY_OPTOUT = '1'
+    $ModuleRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    Import-Module -Name (Join-Path -Path $ModuleRoot -ChildPath 'tcs.core.psd1') -Force
 }
 
-Describe -Tags 'PSSA' -Name 'Testing against PSScriptAnalyzer rules' {
-	BeforeAll {
-		$ScriptAnalyzerSettings = Get-Content -Path (Join-Path -Path (Get-Location) -ChildPath 'PSScriptAnalyzerSettings.psd1') | Out-String | Invoke-Expression
-		$AnalyzerIssues = Invoke-ScriptAnalyzer -Path "$TestPath\$FunctionFileName" -Settings $ScriptAnalyzerSettings
-		$ScriptAnalyzerRuleNames = Get-ScriptAnalyzerRule | Select-Object -ExpandProperty RuleName
-	}
+AfterAll {
+    Remove-Module -Name tcs.core -Force -ErrorAction SilentlyContinue
+}
 
-	foreach ($Rule in $ScriptAnalyzerRuleNames) {
-		if ($ScriptAnalyzerSettings.excluderules -notcontains $Rule) {
-			It "Function $FunctionFileName should pass $Rule" {
-				$Failures = $AnalyzerIssues | Where-Object -Property RuleName -EQ -Value $rule
-				($Failures | Measure-Object).Count | Should -Be 0
-			}
-		}
-		else {
-			# We still want it in the tests, but since it doesn't actually get tested we will skip
-			It "Function $FunctionFileName should pass $Rule" -Skip {
-				$Failures = $AnalyzerIssues | Where-Object -Property RuleName -EQ -Value $rule
-				($Failures | Measure-Object).Count | Should -Be 0
-			}
-		}
-	}
+Describe 'Set-ModuleConfig' {
+    BeforeEach {
+        $configFile = Join-Path -Path $env:TCS_CONFIG_ROOT -ChildPath 'tcs.test/Module.Config.json'
+        if (Test-Path -Path $configFile) { Remove-Item -Path $configFile -Force }
+    }
+
+    It 'Creates the settings file from defaults when it does not exist' {
+        Set-ModuleConfig -ModuleName 'tcs.test' -UpdateWarning $false
+        $saved = Get-Content -Path $configFile -Raw | ConvertFrom-Json
+        $saved.UpdateWarning | Should -BeFalse
+        $saved.Telemetry | Should -BeTrue
+        $saved.UpdateCheckIntervalHours | Should -Be 24
+    }
+
+    It 'Only changes the settings that are passed' {
+        Set-ModuleConfig -ModuleName 'tcs.test' -Telemetry $false
+        Set-ModuleConfig -ModuleName 'tcs.test' -UpdateWarning $false
+        $saved = Get-Content -Path $configFile -Raw | ConvertFrom-Json
+        $saved.Telemetry | Should -BeFalse
+        $saved.UpdateWarning | Should -BeFalse
+    }
+
+    It 'Converts legacy string booleans to real booleans' {
+        $null = New-Item -Path (Split-Path $configFile) -ItemType Directory -Force
+        '{ "UpdateWarning": "True", "BasicTelemetry": "True" }' | Set-Content -Path $configFile
+        $result = Set-ModuleConfig -ModuleName 'tcs.test' -Telemetry $false -PassThru
+        $result.UpdateWarning | Should -BeOfType [bool]
+        $result.UpdateWarning | Should -BeTrue
+    }
+
+    It 'Restores defaults with -Reset' {
+        Set-ModuleConfig -ModuleName 'tcs.test' -UpdateWarning $false -Telemetry $false
+        $result = Set-ModuleConfig -ModuleName 'tcs.test' -Reset -PassThru
+        $result.UpdateWarning | Should -BeTrue
+        $result.Telemetry | Should -BeTrue
+    }
+
+    It 'Accepts an explicit settings file path' {
+        $path = Join-Path -Path $TestDrive -ChildPath 'custom/tcs.custom/Module.Config.json'
+        Set-ModuleConfig -ModuleConfigFilePath $path -UpdateCheckIntervalHours 48
+        (Get-Content -Path $path -Raw | ConvertFrom-Json).UpdateCheckIntervalHours | Should -Be 48
+    }
+
+    It 'Rejects a non-HTTPS telemetry endpoint' {
+        { Set-ModuleConfig -ModuleName 'tcs.test' -TelemetryUri 'http://example.com' } | Should -Throw
+    }
+
+    It 'Does not write anything with -WhatIf' {
+        Set-ModuleConfig -ModuleName 'tcs.test' -UpdateWarning $false -WhatIf
+        Test-Path -Path $configFile | Should -BeFalse
+    }
+
+    It 'Updates the configuration of the current session' {
+        $null = Get-ModuleConfig -CommandPath (Join-Path $ModuleRoot 'tcs.core.psm1')
+        Set-ModuleConfig -ModuleName 'tcs.core' -Telemetry $false
+        InModuleScope tcs.core { $script:ModuleConfigCache['tcs.core'].Telemetry } | Should -BeFalse
+        Set-ModuleConfig -ModuleName 'tcs.core' -Reset
+    }
 }

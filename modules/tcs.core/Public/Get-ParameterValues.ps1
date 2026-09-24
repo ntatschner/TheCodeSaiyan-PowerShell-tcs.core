@@ -37,29 +37,29 @@
         $params = Get-ParameterValues -PSBoundParametersHash $PSBoundParameters
         return $params
     }
-    
+
     Extracts only the user-provided parameters from the function call.
 
 .EXAMPLE
     $filteredParams = Get-ParameterValues -PSBoundParametersHash $PSBoundParameters -Exclude @('TempPath')
-    
+
     Extracts parameters while excluding 'TempPath' in addition to the default exclusions.
 
 .EXAMPLE
     $filteredParams = Get-ParameterValues -PSBoundParametersHash $PSBoundParameters -Include @('Name', 'Value')
-    
+
     Extracts only the 'Name' and 'Value' parameters, ignoring all others.
 
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.2.0
-    
-    This is a private function used internally by the tcs.core module for parameter
-    processing and configuration management. It automatically excludes common PowerShell
-    system parameters to provide clean parameter sets for further processing.
+
+    Common parameters (Verbose, ErrorAction, WhatIf, Confirm, ...) are always excluded.
 #>
 function Get-ParameterValues {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '',
+        Justification = 'Public name used by other tcs modules; renaming would break them.')]
+    [CmdletBinding()]
     [OutputType([hashtable])]
     param(
         [Parameter(Mandatory)]
@@ -68,13 +68,13 @@ function Get-ParameterValues {
         [string[]]$Include
     )
     # Get all the PSBoundParameters and set the values as a hashtable
-    $DefaultExclude = @('Verbose', 'Debug', 'ErrorAction', 'WarningAction', 'InformationAction', 'ErrorVariable', 'WarningVariable', 'InformationVariable', 'OutVariable', 'OutBuffer', 'PipelineVariable')
+    $DefaultExclude = @('Verbose', 'Debug', 'ErrorAction', 'WarningAction', 'InformationAction', 'ProgressAction', 'ErrorVariable', 'WarningVariable', 'InformationVariable', 'OutVariable', 'OutBuffer', 'PipelineVariable', 'WhatIf', 'Confirm')
     if ($null -eq $Exclude) {
         $Exclude = $DefaultExclude
     } else {
         $Exclude += $DefaultExclude
     }
-    $Parameters = New-Object System.Collections.Hashtable
+    $Parameters = @{}
     $PSBoundParametersHash.GetEnumerator() | ForEach-Object {
         # Only add the key and value to the hashtable if the value is not null and not the default parameters
         if ($null -ne $_.Value -and $Exclude -notcontains $_.Key) {

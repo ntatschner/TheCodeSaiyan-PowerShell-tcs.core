@@ -1,49 +1,79 @@
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '',
+    Justification = 'Builds a value in the legacy 0.2.x format to test backward compatibility.')]
+param()
+
 BeforeAll {
-	$TestPath = Split-Path -Parent -Path $PSScriptRoot
-
-	$FunctionFileName = (Split-Path -Leaf $PSCommandPath ) -replace '\.Tests\.', '.'
-
-	# You can use this Variable to call your function via it's name or ignore/remove as required
-	$FunctionName = $FunctionFileName.Replace('.ps1', '')
-	
-	. $(Join-Path -Path $TestPath -ChildPath $FunctionFileName)
-	. $(Join-Path -Path $TestPath -ChildPath 'Protect-ConfigValue.ps1')
-}
-Describe -Name "Performing basic validation test on function $FunctionFileName" {
-	It "Should decrypt to original value" {
-		$original = "RoundTripTestValue"
-		$encrypted = Protect-ConfigValue -Value $original
-		$decrypted = Unprotect-ConfigValue -EncryptedValue $encrypted
-		$decrypted | Should -Be $original
-	}
-
-	It "Should return a string" {
-		$encrypted = Protect-ConfigValue -Value "TypeCheckValue"
-		$result = Unprotect-ConfigValue -EncryptedValue $encrypted
-		$result | Should -BeOfType [string]
-	}
+    $env:TCS_CONFIG_ROOT = Join-Path -Path $TestDrive -ChildPath 'config'
+    $env:TCS_SKIP_UPDATE_CHECK = '1'
+    $env:TCS_TELEMETRY_OPTOUT = '1'
+    $ModuleRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+    Import-Module -Name (Join-Path -Path $ModuleRoot -ChildPath 'tcs.core.psd1') -Force
 }
 
-Describe -Tags 'PSSA' -Name 'Testing against PSScriptAnalyzer rules' {
-	BeforeAll {
-		$ScriptAnalyzerSettings = Get-Content -Path (Join-Path -Path (Get-Location) -ChildPath 'PSScriptAnalyzerSettings.psd1') | Out-String | Invoke-Expression
-		$AnalyzerIssues = Invoke-ScriptAnalyzer -Path "$TestPath\$FunctionFileName" -Settings $ScriptAnalyzerSettings
-		$ScriptAnalyzerRuleNames = Get-ScriptAnalyzerRule | Select-Object -ExpandProperty RuleName
-	}
+AfterAll {
+    Remove-Module -Name tcs.core -Force -ErrorAction SilentlyContinue
+}
 
-	foreach ($Rule in $ScriptAnalyzerRuleNames) {
-		if ($ScriptAnalyzerSettings.excluderules -notcontains $Rule) {
-			It "Function $FunctionFileName should pass $Rule" {
-				$Failures = $AnalyzerIssues | Where-Object -Property RuleName -EQ -Value $rule
-				($Failures | Measure-Object).Count | Should -Be 0
-			}
-		}
-		else {
-			# We still want it in the tests, but since it doesn't actually get tested we will skip
-			It "Function $FunctionFileName should pass $Rule" -Skip {
-				$Failures = $AnalyzerIssues | Where-Object -Property RuleName -EQ -Value $rule
-				($Failures | Measure-Object).Count | Should -Be 0
-			}
-		}
-	}
+Describe 'Unprotect-ConfigValue' {
+    It "Should decrypt to original value" {
+        $original = "RoundTripTestValue"
+        $encrypted = Protect-ConfigValue -Value $original
+        $decrypted = Unprotect-ConfigValue -EncryptedValue $encrypted
+        $decrypted | Should -Be $original
+    }
+
+    It "Should return a string" {
+        $encrypted = Protect-ConfigValue -Value "TypeCheckValue"
+        $result = Unprotect-ConfigValue -EncryptedValue $encrypted
+        $result | Should -BeOfType [string]
+    }
+}
+
+Describe 'Unprotect-ConfigValue format and platforms' {
+    BeforeAll {
+        $key = New-Object byte[] 32
+        [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($key)
+    }
+
+    It 'Round-trips unicode text' {
+        $text = 'pässwörd-✓-日本'
+        Unprotect-ConfigValue -EncryptedValue (Protect-ConfigValue -Value $text) | Should -BeExactly $text
+    }
+
+    It 'Round-trips with a supplied key' {
+        Unprotect-ConfigValue -EncryptedValue (Protect-ConfigValue -Value 'k' -Key $key) -Key $key | Should -BeExactly 'k'
+    }
+
+    It 'Requires the key for key-protected values' {
+        $protected = Protect-ConfigValue -Value 'k' -Key $key
+        Unprotect-ConfigValue -EncryptedValue $protected -ErrorAction SilentlyContinue -ErrorVariable errs | Should -BeNullOrEmpty
+        $errs[0].ToString() | Should -Match '-Key'
+    }
+
+    It 'Fails with the wrong key' {
+        $other = New-Object byte[] 32
+        $protected = Protect-ConfigValue -Value 'k' -Key $key
+        { Unprotect-ConfigValue -EncryptedValue $protected -Key $other -ErrorAction Stop } | Should -Throw
+    }
+
+    It 'Detects tampering' {
+        $protected = Protect-ConfigValue -Value 'k' -Key $key
+        $bytes = [Convert]::FromBase64String($protected.Split(':')[3])
+        $bytes[20] = $bytes[20] -bxor 1
+        $tampered = 'tcs:v1:aes-key:' + [Convert]::ToBase64String($bytes)
+        { Unprotect-ConfigValue -EncryptedValue $tampered -Key $key -ErrorAction Stop } | Should -Throw
+    }
+
+    It 'Returns a SecureString with -AsSecureString' {
+        $secure = Unprotect-ConfigValue -EncryptedValue (Protect-ConfigValue -Value 's') -AsSecureString
+        $secure | Should -BeOfType [System.Security.SecureString]
+        [System.Net.NetworkCredential]::new('', $secure).Password | Should -BeExactly 's'
+    }
+
+    It 'Still reads values written by tcs.core 0.2.x, with a warning' {
+        $legacyKey = [System.Security.Cryptography.SHA256]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($env:COMPUTERNAME + 'tcs.core'))
+        $legacy = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String 'old' -AsPlainText -Force) -Key $legacyKey
+        Unprotect-ConfigValue -EncryptedValue $legacy -Scope LocalMachine -WarningVariable warnings -WarningAction SilentlyContinue | Should -BeExactly 'old'
+        $warnings.Count | Should -Be 1
+    }
 }
