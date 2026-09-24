@@ -1,10 +1,11 @@
-<#
+﻿<#
 .SYNOPSIS
     Converts a string to kebab-case format.
 
 .DESCRIPTION
     The ConvertTo-KebabCase function takes a string input and converts it to kebab-case format.
-    It splits the input on spaces, underscores, hyphens, and PascalCase boundaries, then
+    It splits the input on spaces, underscores, hyphens, case changes (including letters
+    outside A-Z, such as 'Ä') and a digit followed by a capital ('Version2Update'), then
     lowercases each word and joins them with hyphens. This is useful for formatting URL slugs,
     CSS class names, or other identifiers that need to follow kebab-case naming conventions.
 
@@ -55,9 +56,8 @@ function ConvertTo-KebabCase {
         if ([string]::IsNullOrEmpty($Value)) {
             return $Value
         }
-        # Split on spaces, underscores, hyphens, and PascalCase boundaries
-        # @() keeps a single word as an array instead of a string
-        $words = @([regex]::Split($Value, '[\s_\-]+|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])') | Where-Object { $_ -ne '' })
+        # Split on spaces, underscores, hyphens, case changes and digit/capital boundaries
+        $words = Split-CaseWord -Value $Value
         if ($words.Count -eq 0) {
             return $Value
         }

@@ -1,10 +1,11 @@
-<#
+﻿<#
 .SYNOPSIS
     Converts a string to camelCase format.
 
 .DESCRIPTION
     The ConvertTo-CamelCase function takes a string input and converts it to camelCase format.
-    It splits the input on spaces, underscores, hyphens, and PascalCase boundaries, then
+    It splits the input on spaces, underscores, hyphens, case changes (including letters
+    outside A-Z, such as 'Ä') and a digit followed by a capital ('Version2Update'), then
     lowercases the first word and PascalCases subsequent words. This is useful for formatting
     property names, variable names, or other identifiers that need to follow camelCase naming
     conventions.
@@ -12,6 +13,11 @@
 .PARAMETER Value
     The string value to convert to camelCase format. Accepts pipeline input and string arrays.
     If the value is null or empty, the function returns the original value unchanged.
+
+.PARAMETER PreserveAcronyms
+    Keeps words written in capitals (at least two capital letters, such as 'XML', 'FA' or
+    'HTML5') as they are instead of capitalising only their first letter: 'parse_XML_file'
+    becomes 'parseXMLFile' instead of 'parseXmlFile'. The first word is always lower case.
 
 .INPUTS
     System.String
@@ -49,6 +55,14 @@
     ConvertTo-CamelCase -Value ""
     Returns: "" (empty string unchanged)
 
+.EXAMPLE
+    ConvertTo-CamelCase -Value 'Version2Update'
+    Returns: "version2Update"
+
+.EXAMPLE
+    ConvertTo-CamelCase -Value 'user 2FA code' -PreserveAcronyms
+    Returns: "user2FACode"
+
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
@@ -62,25 +76,25 @@ function ConvertTo-CamelCase {
     param(
         [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]
         [AllowEmptyString()]
-        [string]$Value
+        [string]$Value,
+
+        [Parameter(HelpMessage = 'Keep all-capitals words such as XML as they are.')]
+        [switch]$PreserveAcronyms
     )
 
     process {
         if ([string]::IsNullOrEmpty($Value)) {
             return $Value
         }
-        # Split on spaces, underscores, hyphens, and PascalCase boundaries
-        # @() keeps a single word as an array instead of a string
-        $words = @([regex]::Split($Value, '[\s_\-]+|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])') | Where-Object { $_ -ne '' })
+        # Split on spaces, underscores, hyphens, case changes and digit/capital boundaries
+        $words = Split-CaseWord -Value $Value
         if ($words.Count -eq 0) {
             return $Value
         }
+        # The first word is always lower case, even an acronym ('XMLParser' -> 'xmlParser')
         $result = $words[0].ToLowerInvariant()
         for ($i = 1; $i -lt $words.Count; $i++) {
-            $word = $words[$i]
-            if ($word.Length -gt 0) {
-                $result += $word.Substring(0, 1).ToUpperInvariant() + $word.Substring(1).ToLowerInvariant()
-            }
+            $result += ConvertTo-CapitalisedWord -Word $words[$i] -PreserveAcronyms:$PreserveAcronyms
         }
         return $result
     }
