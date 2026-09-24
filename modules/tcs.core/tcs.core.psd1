@@ -1,10 +1,10 @@
 @{
-    ModuleVersion        = '0.3.0'
+    ModuleVersion        = '0.4.0'
     GUID                 = 'a61ffd6a-dac4-4de4-a830-0e58a0535eaa'
     Author               = 'Nigel Tatschner'
     CompanyName          = 'TheCodeSaiyan'
     Copyright            = '(c) 2024-2026 Nigel Tatschner. All rights reserved.'
-    Description          = 'Core functions required for the suite of modules including configuration management, dynamic parameters, telemetry collection, structured logging, retry logic, string casing utilities, and config value protection.'
+    Description          = 'Core functions required for the suite of modules including configuration management, dynamic parameters, telemetry collection and a telemetry command wrapper, structured logging, HTTP-aware retry logic, HTTP helpers, saved module secrets, string casing utilities, and config value protection.'
     CompatiblePSEditions = @('Desktop', 'Core')
     PowerShellVersion    = '5.1'
     RootModule           = 'tcs.core.psm1'
@@ -41,7 +41,7 @@
     AliasesToExport      = @()
     PrivateData          = @{
         PSData = @{
-            Tags         = @('Core', 'Utility', 'Module', 'Telemetry', 'Configuration', 'DynamicParameters', 'Logging', 'Retry', 'StringCasing', 'Security', 'PSEdition_Desktop', 'PSEdition_Core', 'Windows', 'Linux', 'MacOS')
+            Tags         = @('Core', 'Utility', 'Module', 'Telemetry', 'Configuration', 'DynamicParameters', 'Logging', 'Retry', 'HTTP', 'Secrets', 'StringCasing', 'Security', 'PSEdition_Desktop', 'PSEdition_Core', 'Windows', 'Linux', 'MacOS')
             ProjectUri   = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core'
             LicenseUri   = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/blob/main/LICENSE'
             ReleaseNotes = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/blob/main/CHANGELOG.md'

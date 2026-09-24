@@ -36,7 +36,7 @@ try {
     if ($snake -ne 'hello_world') { throw "ConvertTo-SnakeCase returned '$snake' (expected 'hello_world')." }
 
     $obj = [PSCustomObject]@{ Name = 'Test'; Value = 42 }
-    $ht = $obj | ConvertTo-HashTable
+    $ht = $obj | ConvertTo-HashTable -WarningAction SilentlyContinue
     if ($ht -isnot [hashtable] -or $ht.Name -ne 'Test') { throw 'ConvertTo-HashTable did not return expected hashtable.' }
 
     $elevated = Test-IsElevated
@@ -49,6 +49,17 @@ try {
     $retryResult = Invoke-WithRetry -ScriptBlock { 'success' } -MaxRetries 1
     if ($retryResult -ne 'success') { throw "Invoke-WithRetry returned '$retryResult' (expected 'success')." }
 
+    $wrapped = Invoke-TcsCommand -ScriptBlock { , @(1) } -CommandName 'Smoke-Test' -ModuleName $moduleName
+    if ($wrapped -isnot [array] -or $wrapped.Count -ne 1) { throw 'Invoke-TcsCommand changed the script block output.' }
+    $token = Start-TcsTelemetry -CommandName 'Smoke-Test' -ModuleName $moduleName
+    Complete-TcsTelemetry -Token $token
+
+    $query = ConvertTo-QueryString -InputObject ([ordered]@{ a = 'x y'; b = 1, 2 })
+    if ($query -ne 'a=x%20y&b=1&b=2') { throw "ConvertTo-QueryString returned '$query'." }
+    $credential = New-Object System.Management.Automation.PSCredential -ArgumentList 'user', (New-Object System.Security.SecureString)
+    if ((New-BasicAuthHeader -Credential $credential -ValueOnly) -ne 'Basic dXNlcjo=') { throw 'New-BasicAuthHeader returned an unexpected value.' }
+    if ($null -ne (Get-HttpErrorDetail -ErrorRecord ([System.Exception]::new('not http')))) { throw 'Get-HttpErrorDetail returned details for a non-HTTP error.' }
+
     $logFile = Join-Path ([System.IO.Path]::GetTempPath()) 'tcs_smoke_test.log'
     Write-Log -Message 'smoke test' -Level Info -LogPath $logFile -NoConsole
     if (-not (Test-Path $logFile)) { throw 'Write-Log did not create log file.' }
@@ -59,6 +70,10 @@ try {
     if ($encrypted -notmatch '^tcs:v1:') { throw "Protect-ConfigValue returned an unexpected format: '$encrypted'." }
     $decrypted = Unprotect-ConfigValue -EncryptedValue $encrypted
     if ($decrypted -ne $secret) { throw "Protect/Unprotect-ConfigValue roundtrip failed: got '$decrypted'." }
+
+    Set-ModuleSecret -ModuleName 'tcs.smoke' -Name 'Token' -Credential $credential
+    if ((Get-ModuleSecret -ModuleName 'tcs.smoke' -Name 'Token').UserName -ne 'user') { throw 'Get-ModuleSecret did not return the saved credential.' }
+    Remove-ModuleSecret -ModuleName 'tcs.smoke' -Name 'Token'
 
     $config = Get-ModuleConfig -CommandPath (Join-Path $moduleDirectory "$moduleName.psm1")
     if ($config.ModuleName -ne $moduleName) { throw "Get-ModuleConfig returned module '$($config.ModuleName)'." }

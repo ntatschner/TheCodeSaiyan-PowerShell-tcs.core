@@ -35,6 +35,12 @@ Describe 'tcs.core module' {
         ($Module.ExportedFunctions.Keys | Sort-Object) | Should -Be $publicFiles
     }
 
+    It 'Has identical en-GB and en-US about help' {
+        $enGB = Get-Content -Path (Join-Path $ModuleRoot 'en-GB/about_tcs.core.help.txt') -Raw
+        $enUS = Get-Content -Path (Join-Path $ModuleRoot 'en-US/about_tcs.core.help.txt') -Raw
+        $enUS | Should -BeExactly $enGB
+    }
+
     It 'Does not export private helpers' {
         $Module.ExportedFunctions.Keys | Should -Not -Contain 'Send-TelemetryPayload'
         $Module.ExportedFunctions.Keys | Should -Not -Contain 'ConvertTo-HashTableValue'
