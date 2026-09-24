@@ -9,6 +9,7 @@
     PowerShellVersion    = '5.1'
     RootModule           = 'tcs.core.psm1'
     FunctionsToExport    = @(
+        'Complete-TcsTelemetry',
         'ConvertTo-CamelCase',
         'ConvertTo-HashTable',
         'ConvertTo-KebabCase',
@@ -17,12 +18,14 @@
         'Get-ModuleConfig',
         'Get-ModuleStatus',
         'Get-ParameterValues',
+        'Invoke-TcsCommand',
         'Invoke-TelemetryCollection',
         'Invoke-WithRetry',
         'New-DynamicParameter',
         'New-TemporaryDirectory',
         'Protect-ConfigValue',
         'Set-ModuleConfig',
+        'Start-TcsTelemetry',
         'Test-IsElevated',
         'Unprotect-ConfigValue',
         'Write-Log'
