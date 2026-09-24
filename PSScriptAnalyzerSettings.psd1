@@ -43,6 +43,8 @@
             CheckPipeForRedundantWhitespace = $true
             CheckSeparator                  = $true
             CheckParameter                  = $false
+            # Allow aligned '=' in hashtables (PSAlignAssignmentStatement enforces alignment)
+            IgnoreAssignmentOperatorInsideHashTable = $true
         }
         PSAlignAssignmentStatement = @{
             Enable         = $true

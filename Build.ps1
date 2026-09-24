@@ -45,7 +45,8 @@ param(
 )
 
 $ModuleName = 'tcs.core'
-$ModulePath = Join-Path $PSScriptRoot 'modules' $ModuleName
+$ModulePath = Join-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath 'modules') -ChildPath $ModuleName
+$PesterVersion = '5.7.1'
 $ManifestPath = Join-Path $ModulePath "$ModuleName.psd1"
 
 function Write-TaskHeader {
@@ -93,6 +94,7 @@ function Test-ModuleValidation {
 
     Write-Host "Testing module import..." -ForegroundColor Gray
     try {
+        $env:TCS_SKIP_UPDATE_CHECK = '1'
         Import-Module $ManifestPath -Force -ErrorAction Stop
         Write-BuildSuccess "Module imports successfully"
 
@@ -127,7 +129,8 @@ function Test-ScriptAnalyzer {
         $analyzerParams['Settings'] = $settingsPath
     }
 
-    $results = Invoke-ScriptAnalyzer @analyzerParams
+    # Pester files are excluded: PSScriptAnalyzer cannot follow Pester's block scoping
+    $results = Invoke-ScriptAnalyzer @analyzerParams | Where-Object { $_.ScriptName -notlike '*.Tests.ps1' }
 
     if ($results) {
         $errors = ($results | Where-Object Severity -eq 'Error').Count
@@ -136,12 +139,9 @@ function Test-ScriptAnalyzer {
         Write-Host "Found $errors error(s) and $warnings warning(s):" -ForegroundColor Yellow
         $results | Format-Table ScriptName, Line, Column, RuleName, Message -Wrap
 
-        if ($errors -gt 0) {
-            Write-BuildError "PSScriptAnalyzer found errors"
-            return $false
-        } else {
-            Write-BuildWarning "PSScriptAnalyzer found warnings"
-        }
+        # Warnings fail the build as well, matching CI
+        Write-BuildError "PSScriptAnalyzer found $errors error(s) and $warnings warning(s)"
+        return $false
     } else {
         Write-BuildSuccess "No PSScriptAnalyzer issues found"
     }
@@ -152,14 +152,20 @@ function Test-ScriptAnalyzer {
 function Invoke-PesterTests {
     Write-TaskHeader "Pester Tests"
 
-    if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.0')) {
-        Write-Host "Installing Pester 5..." -ForegroundColor Gray
-        Install-Module Pester -MinimumVersion 5.0 -Force -Scope CurrentUser
+    if (-not (Get-Module -ListAvailable Pester | Where-Object Version -EQ $PesterVersion)) {
+        Write-Host "Installing Pester $PesterVersion..." -ForegroundColor Gray
+        Install-Module Pester -RequiredVersion $PesterVersion -Force -SkipPublisherCheck -Scope CurrentUser
     }
+    Import-Module Pester -RequiredVersion $PesterVersion -Force
+
+    # Keep test runs offline and away from the real user profile
+    $env:TCS_SKIP_UPDATE_CHECK = '1'
+    $env:TCS_TELEMETRY_OPTOUT = '1'
 
     $pesterConfig = New-PesterConfiguration
-    $pesterConfig.Run.Path = $ModulePath
+    $pesterConfig.Run.Path = @($ModulePath, (Join-Path $PSScriptRoot 'tests'))
     $pesterConfig.Run.Exit = $false
+    $pesterConfig.Run.PassThru = $true
     $pesterConfig.Output.Verbosity = 'Normal'
     $pesterConfig.TestResult.Enabled = $true
     $pesterConfig.TestResult.OutputPath = Join-Path $PSScriptRoot 'TestResults.xml'
@@ -278,11 +284,13 @@ function Show-Help {
 
 switch ($Task) {
     'Validate' {
-        $success = Test-ModuleValidation -and (Test-ScriptAnalyzer)
+        # Parentheses are required: without them '-and' is passed to the function as an argument
+        $success = (Test-ModuleValidation) -and (Test-ScriptAnalyzer)
         exit $(if ($success) { 0 } else { 1 })
     }
     'Test' {
-        $success = Test-ModuleValidation -and (Test-ScriptAnalyzer) -and (Invoke-PesterTests)
+        # Parentheses are required: without them '-and' is passed to the function as an argument
+        $success = (Test-ModuleValidation) -and (Test-ScriptAnalyzer) -and (Invoke-PesterTests)
         exit $(if ($success) { 0 } else { 1 })
     }
     'UpdateVersion' {

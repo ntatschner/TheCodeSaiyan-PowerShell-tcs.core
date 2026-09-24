@@ -44,7 +44,6 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.2.0
 
     This function is part of the tcs.core module and provides a convenient way to create
     uniquely named temporary directories for build artifacts, test isolation, or other
@@ -54,7 +53,7 @@
     https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/
 #>
 function New-TemporaryDirectory {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     [OutputType([System.IO.DirectoryInfo])]
     param(
         [Parameter(HelpMessage = "Prefix string for the temporary directory name.")]
@@ -72,6 +71,7 @@ function New-TemporaryDirectory {
     $directoryName = "${Prefix}_${guidSegment}"
     $fullPath = Join-Path -Path $BasePath -ChildPath $directoryName
 
-    $directory = New-Item -Path $fullPath -ItemType Directory -Force
-    return $directory
+    if ($PSCmdlet.ShouldProcess($fullPath, 'Create temporary directory')) {
+        return (New-Item -Path $fullPath -ItemType Directory -ErrorAction Stop)
+    }
 }
