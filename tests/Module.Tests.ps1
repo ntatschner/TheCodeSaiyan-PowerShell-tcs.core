@@ -44,6 +44,14 @@ Describe 'tcs.core module' {
         $output = & (Get-Command pwsh, powershell -ErrorAction SilentlyContinue | Select-Object -First 1).Source -NoProfile -NonInteractive -Command "`$env:TCS_CONFIG_ROOT='$($env:TCS_CONFIG_ROOT)'; `$env:TCS_SKIP_UPDATE_CHECK='1'; Import-Module '$ManifestPath' 6>`$null; 'done'"
         $output | Should -Be 'done'
     }
+
+    It 'Imports without warnings when one setting is invalid' {
+        $root = Join-Path -Path $TestDrive -ChildPath 'badconfig'
+        $null = New-Item -Path (Join-Path $root 'tcs.core') -ItemType Directory -Force
+        '{ "UpdateCheckIntervalHours": -5, "UpdateWarning": true }' | Set-Content -Path (Join-Path $root 'tcs.core/Module.Config.json')
+        $output = & (Get-Command pwsh, powershell -ErrorAction SilentlyContinue | Select-Object -First 1).Source -NoProfile -NonInteractive -Command "`$env:TCS_CONFIG_ROOT='$root'; `$env:TCS_SKIP_UPDATE_CHECK='1'; Import-Module '$ManifestPath' 3>&1 6>`$null; 'done'"
+        $output | Should -Be 'done'
+    }
 }
 
 Describe 'Help for <Name>' -ForEach $PublicFunctions {

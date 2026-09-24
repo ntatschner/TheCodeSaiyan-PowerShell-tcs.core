@@ -16,6 +16,10 @@
     The settings file is created with the defaults the first time a module is loaded so users
     can edit it. After that it is only read; change settings with Set-ModuleConfig.
 
+    A value that cannot be read as the type of its default, or that is out of range (for
+    example UpdateCheckIntervalHours below 1), is replaced by the default for that setting
+    only; the other settings in the file are still used.
+
     The returned hashtable also contains ModuleName, ModulePath, ModuleVersion,
     ModuleConfigPath and ModuleConfigFilePath.
 
@@ -89,7 +93,7 @@ function Get-ModuleConfig {
         try {
             $userConfig = Read-JsonFileAsHashtable -Path $moduleConfigFilePath
             foreach ($key in $userConfig.Keys) {
-                $config[$key] = ConvertTo-ConfigValueType -Value $userConfig[$key] -DefaultValue $defaults[$key]
+                $config[$key] = ConvertTo-ConfigValueType -Value $userConfig[$key] -DefaultValue $defaults[$key] -Key $key
             }
         }
         catch {

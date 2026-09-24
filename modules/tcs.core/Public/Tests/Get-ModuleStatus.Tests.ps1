@@ -89,4 +89,8 @@ Describe 'Get-ModuleStatus' {
         $null = Get-ModuleStatus -ModuleName 'tcs.fake' -ModulePath $fakeModule
         (Get-ModuleStatus -ModuleName 'tcs.fake' -ModulePath $fakeModule -Force).Source | Should -Be 'Gallery'
     }
+
+    It 'Rejects a module name that is not a single safe folder name' {
+        { Get-ModuleStatus -ModuleName '../escaped' -ModulePath $TestDrive } | Should -Throw
+    }
 }
