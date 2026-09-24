@@ -1,44 +1,39 @@
 <#
 .SYNOPSIS
-    Sets or updates configuration values for a PowerShell module.
+    Sets or updates configuration values for a module in the tcs suite.
 
 .DESCRIPTION
-    The Set-ModuleConfig function manages module configuration by creating or updating a JSON
-    configuration file. It handles various module settings including update warnings, telemetry
-    options, and module path information. If the configuration file doesn't exist, it creates
-    a new one with the specified values. If it exists, it updates the existing configuration
-    with new or changed values while preserving existing settings.
-
-.PARAMETER UpdateWarning
-    Determines whether update warning messages are displayed when the module is loaded.
-    When set to $true, the module will check for updates and display notifications to users.
+    The Set-ModuleConfig function updates a module's settings file
+    (<ApplicationData>/PowerShell/Config/<ModuleName>/Module.Config.json by default). Only the
+    settings you pass are changed; other settings are kept. The file is created if it does not
+    exist. The change also applies to the current session.
 
 .PARAMETER ModuleName
-    The name of the module for which the configuration is being set. This is used for
-    identification and logging purposes.
+    The name of the module to configure, for example 'tcs.core' or 'tcs.jira'.
 
 .PARAMETER ModuleConfigFilePath
-    The full path to the module configuration JSON file. This parameter is mandatory.
-    If the file doesn't exist, it will be created automatically.
+    The full path of a settings file to update, instead of resolving it from ModuleName.
 
-.PARAMETER ModuleConfigPath
-    The directory path where the module configuration file is located.
+.PARAMETER UpdateWarning
+    Whether to show a warning when a newer version of the module is available.
 
-.PARAMETER ModulePath
-    The root path of the module installation directory.
+.PARAMETER UpdateCheckIntervalHours
+    How often (in hours) to check the PowerShell Gallery for a newer version. Default 24.
 
-.PARAMETER BasicTelemetry
-    Switch parameter that enables or disables basic telemetry collection for the module.
-    When specified, basic usage telemetry will be collected according to privacy settings.
+.PARAMETER Telemetry
+    Whether anonymous usage telemetry is sent.
+
+.PARAMETER TelemetryUri
+    The HTTPS ingestion endpoint for telemetry. An empty string clears it.
+
+.PARAMETER TelemetryApiKey
+    The API key sent to the telemetry endpoint in the X-API-Key header.
 
 .PARAMETER Reset
-    Switch parameter that restores the configuration to default values from the module's
-    Config/Module.Defaults.json file. When specified, the current configuration is replaced
-    with default values.
+    Restores the settings file to the defaults before applying any other settings passed.
 
 .PARAMETER PassThru
-    Switch parameter that outputs the final configuration hashtable after writing.
-    When specified, the function returns the resulting configuration as a hashtable.
+    Outputs the resulting settings as a hashtable.
 
 .INPUTS
     None
@@ -46,117 +41,107 @@
 
 .OUTPUTS
     System.Collections.Hashtable
-    When PassThru is specified, returns a hashtable containing the final configuration.
-    Otherwise, this function does not return any output.
+    When PassThru is specified.
 
 .EXAMPLE
-    Set-ModuleConfig -UpdateWarning $true -ModuleName "tcs.core" -ModuleConfigFilePath "C:\Config\Module.Config.json"
-    
-    Enables update warnings for the tcs.core module.
+    Set-ModuleConfig -ModuleName 'tcs.core' -UpdateWarning $false
+
+    Turns off update warnings for tcs.core.
 
 .EXAMPLE
-    Set-ModuleConfig -UpdateWarning $false -BasicTelemetry -ModuleName "MyModule" -ModuleConfigFilePath "C:\Config\MyModule.json"
-    
-    Disables update warnings, enables basic telemetry, and sets the configuration file path for MyModule.
+    Set-ModuleConfig -ModuleName 'tcs.jira' -Telemetry $false
+
+    Turns off telemetry for tcs.jira.
 
 .EXAMPLE
-    Set-ModuleConfig -ModuleConfigFilePath "C:\Config\Module.Config.json" -Reset
-    
-    Resets the module configuration to default values.
+    Set-ModuleConfig -ModuleName 'tcs.core' -Reset -PassThru
 
-.EXAMPLE
-    $config = Set-ModuleConfig -ModuleName "tcs.core" -ModuleConfigFilePath "C:\Config\Module.Config.json" -PassThru
-    
-    Sets the configuration and returns the resulting hashtable.
+    Restores the defaults and returns the resulting settings.
 
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.2.0
-    
-    This function is part of the tcs.core module configuration management system.
-    The configuration is stored in JSON format for easy reading and modification.
-    
-    Configuration files are created with appropriate permissions and will be
-    force-created if they don't exist. Existing configurations are merged with
-    new values, preserving settings that aren't being changed.
 
 .LINK
     Get-ModuleConfig
-
-.LINK
-    Get-ModuleStatus
 #>
 function Set-ModuleConfig {
-    [CmdletBinding(HelpUri = 'https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/')]
+    [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'ByName')]
     [OutputType([hashtable])]
     param(
-        [Parameter(HelpMessage = "Determines if the update message is displayed when the module is loaded.")]
-        [bool]$UpdateWarning,
-    
-        [Parameter(HelpMessage = "Name of the module the configuration is being set for.")]
+        [Parameter(Mandatory, Position = 0, ParameterSetName = 'ByName', HelpMessage = 'Name of the module to configure.')]
+        [ValidateNotNullOrEmpty()]
         [string]$ModuleName,
 
-        [Parameter(Mandatory, HelpMessage = "Path of the module config file.")]
+        [Parameter(Mandatory, ParameterSetName = 'ByPath', HelpMessage = 'Path of the module settings file.')]
+        [ValidateNotNullOrEmpty()]
         [string]$ModuleConfigFilePath,
 
-        [Parameter(HelpMessage = "Path of the module config directory.")]
-        [string]$ModuleConfigPath,
+        [Parameter(HelpMessage = 'Show a warning when an update is available.')]
+        [bool]$UpdateWarning,
 
-        [Parameter(HelpMessage = "Path of the module.")]
-        [string]$ModulePath,
+        [Parameter(HelpMessage = 'Hours between update checks.')]
+        [ValidateRange(1, 8760)]
+        [int]$UpdateCheckIntervalHours,
 
-        [switch]$BasicTelemetry,
+        [Parameter(HelpMessage = 'Send anonymous usage telemetry.')]
+        [bool]$Telemetry,
 
-        [Parameter(HelpMessage = "Restores configuration to default values.")]
+        [Parameter(HelpMessage = 'HTTPS telemetry ingestion endpoint.')]
+        [AllowEmptyString()]
+        [ValidateScript({ [string]::IsNullOrEmpty($_) -or $_ -match '^https://' })]
+        [string]$TelemetryUri,
+
+        [Parameter(HelpMessage = 'API key for the telemetry endpoint.')]
+        [AllowEmptyString()]
+        [string]$TelemetryApiKey,
+
+        [Parameter(HelpMessage = 'Restore the default settings first.')]
         [switch]$Reset,
 
-        [Parameter(HelpMessage = "Outputs the final configuration hashtable.")]
+        [Parameter(HelpMessage = 'Output the resulting settings.')]
         [switch]$PassThru
     )
 
-    if ($Reset) {
-        $ConfigDefaultsPath = Join-Path -Path $(Split-Path -Path $PSScriptRoot -Parent) -ChildPath "Config\Module.Defaults.json"
-        $DefaultConfig = Get-Content -Path $ConfigDefaultsPath | ConvertFrom-Json
-        $ConfigHashTable = @{}
-        $DefaultConfig.PSObject.Properties | ForEach-Object { $ConfigHashTable[$_.Name] = $_.Value }
-        $ConfigHashTable | ConvertTo-Json | Set-Content -Path $ModuleConfigFilePath -Force -Confirm:$false
-        if ($PassThru) {
-            $ConfigHashTable
-        }
-        return
+    if ($PSCmdlet.ParameterSetName -eq 'ByName') {
+        $ModuleConfigFilePath = Join-Path -Path (Join-Path -Path (Get-ModuleConfigRoot) -ChildPath $ModuleName) -ChildPath 'Module.Config.json'
+    }
+    else {
+        $ModuleName = Split-Path -Path (Split-Path -Path $ModuleConfigFilePath -Parent) -Leaf
     }
 
-    # Test to see if module config JSON exists and create it if it doesn't
-    if (-not (Test-Path -Path $ModuleConfigFilePath)) {
-        New-Item -Path $ModuleConfigFilePath -ItemType File -Force -Confirm:$false | Out-Null
-        $NewConfig = Get-ParameterValues -PSBoundParametersHash $PSBoundParameters -Exclude @('Reset', 'PassThru')
-        $NewConfig | ConvertTo-Json | Set-Content -Path $ModuleConfigFilePath -Force -Confirm:$false
-        if ($PassThru) {
-            $NewConfig
+    $defaults = Get-DefaultModuleConfig
+    $settings = @{}
+    if ($Reset -or -not (Test-Path -LiteralPath $ModuleConfigFilePath)) {
+        foreach ($key in $defaults.Keys) {
+            $settings[$key] = $defaults[$key]
         }
     }
     else {
-        # Read the module config JSON
-        $Config = (Get-Content -Path $ModuleConfigFilePath | ConvertFrom-Json)
-        $ConfigHashTable = @{}
-        $Config.PSObject.Properties | ForEach-Object { $ConfigHashTable[$_.Name] = $_.Value }
-        # Update or add new values to the module config JSON
-        $NewConfig = Get-ParameterValues -PSBoundParametersHash $PSBoundParameters -Exclude @('Reset', 'PassThru')
-        Write-Verbose "Updating module config with the following values: $NewConfig"
-        $NewConfig.GetEnumerator() | ForEach-Object {
-            $Key = $_.Key
-            $Value = $_.Value
-            if ($ConfigHashTable.ContainsKey($Key)) {
-                $ConfigHashTable[$Key] = $Value
-            }
-            else {
-                $ConfigHashTable.Add($Key, $Value)
+        $existing = Read-JsonFileAsHashtable -Path $ModuleConfigFilePath
+        foreach ($key in $existing.Keys) {
+            $settings[$key] = ConvertTo-ConfigValueType -Value $existing[$key] -DefaultValue $defaults[$key]
+        }
+    }
+
+    foreach ($name in @('UpdateWarning', 'UpdateCheckIntervalHours', 'Telemetry', 'TelemetryUri', 'TelemetryApiKey')) {
+        if ($PSBoundParameters.ContainsKey($name)) {
+            $settings[$name] = $PSBoundParameters[$name]
+        }
+    }
+
+    if ($PSCmdlet.ShouldProcess($ModuleConfigFilePath, 'Update module settings')) {
+        Write-JsonFile -Path $ModuleConfigFilePath -Data $settings
+
+        # Keep the current session in step with the file
+        if ($script:ModuleConfigCache.ContainsKey($ModuleName)) {
+            foreach ($key in $settings.Keys) {
+                $script:ModuleConfigCache[$ModuleName][$key] = $settings[$key]
             }
         }
-        $ConfigHashTable | ConvertTo-Json | Set-Content -Path $ModuleConfigFilePath -Force -Confirm:$false
-        if ($PassThru) {
-            $ConfigHashTable
-        }
+    }
+
+    if ($PassThru) {
+        $settings
     }
 }

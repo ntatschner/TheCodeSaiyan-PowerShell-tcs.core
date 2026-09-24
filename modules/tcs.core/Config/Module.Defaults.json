@@ -1,3 +1,7 @@
 {
-    "UpdateWarning": "True"
+    "UpdateWarning": true,
+    "UpdateCheckIntervalHours": 24,
+    "Telemetry": true,
+    "TelemetryUri": "",
+    "TelemetryApiKey": ""
 }

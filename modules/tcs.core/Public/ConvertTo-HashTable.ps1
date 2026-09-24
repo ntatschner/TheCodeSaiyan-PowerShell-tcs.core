@@ -3,8 +3,8 @@
     Converts a PSCustomObject to a hashtable.
 
 .DESCRIPTION
-    The ConvertTo-HashTable function converts a PSCustomObject (or any PSObject) into an
-    ordered hashtable. It supports recursive conversion of nested PSCustomObjects and arrays,
+    The ConvertTo-HashTable function converts a PSCustomObject (or any PSObject) into a
+    hashtable (or an ordered dictionary with -Ordered). It supports recursive conversion of nested PSCustomObjects and arrays,
     as well as filtering out properties with null or empty values. This is useful when working
     with data from ConvertFrom-Json or other cmdlets that produce PSCustomObjects and you need
     a hashtable for splatting, comparison, or other operations.
@@ -21,13 +21,16 @@
     When specified, excludes properties with null or empty string values from the resulting
     hashtable.
 
+.PARAMETER Ordered
+    Returns an ordered dictionary that keeps the property order of the input object.
+
 .INPUTS
     System.Management.Automation.PSObject
     You can pipe one or more PSObjects to ConvertTo-HashTable.
 
 .OUTPUTS
     System.Collections.Hashtable
-    Returns a hashtable representing the properties of the input object.
+    System.Collections.Specialized.OrderedDictionary (with -Ordered)
 
 .EXAMPLE
     $obj = [PSCustomObject]@{ Name = "Test"; Value = 42 }
@@ -50,7 +53,6 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.2.0
 
     This function is part of the tcs.core module and provides a convenient utility for
     converting PSCustomObjects to hashtables, which is a common need when working with
@@ -61,7 +63,7 @@
 #>
 function ConvertTo-HashTable {
     [CmdletBinding()]
-    [OutputType([hashtable])]
+    [OutputType([hashtable], [System.Collections.Specialized.OrderedDictionary])]
     param(
         [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0, HelpMessage = "The PSObject to convert to a hashtable.")]
         [PSObject]$InputObject,
@@ -70,14 +72,25 @@ function ConvertTo-HashTable {
         [switch]$Recurse,
 
         [Parameter(HelpMessage = "Exclude properties with null or empty string values.")]
-        [switch]$ExcludeEmpty
+        [switch]$ExcludeEmpty,
+
+        [Parameter(HelpMessage = "Return an ordered dictionary that keeps property order.")]
+        [switch]$Ordered
     )
 
     process {
-        $hashtable = @{}
+        $hashtable = if ($Ordered) { [ordered]@{} } else { @{} }
 
-        foreach ($property in $InputObject.PSObject.Properties) {
-            $value = $property.Value
+        # A dictionary is already key/value data; its PSObject properties would be Keys, Count, etc.
+        $entries = if ($InputObject -is [System.Collections.IDictionary]) {
+            foreach ($key in $InputObject.Keys) { [PSCustomObject]@{ Name = [string]$key; Value = $InputObject[$key] } }
+        }
+        else {
+            $InputObject.PSObject.Properties | ForEach-Object { [PSCustomObject]@{ Name = $_.Name; Value = $_.Value } }
+        }
+
+        foreach ($entry in $entries) {
+            $value = $entry.Value
 
             if ($ExcludeEmpty) {
                 if ($null -eq $value -or ($value -is [string] -and [string]::IsNullOrEmpty($value))) {
@@ -86,26 +99,39 @@ function ConvertTo-HashTable {
             }
 
             if ($Recurse -and $null -ne $value) {
-                if ($value -is [System.Management.Automation.PSCustomObject]) {
-                    $value = ConvertTo-HashTable -InputObject $value -Recurse:$Recurse -ExcludeEmpty:$ExcludeEmpty
-                }
-                elseif ($value -is [System.Collections.IEnumerable] -and $value -isnot [string]) {
-                    $convertedArray = @()
-                    foreach ($item in $value) {
-                        if ($item -is [System.Management.Automation.PSCustomObject]) {
-                            $convertedArray += ConvertTo-HashTable -InputObject $item -Recurse:$Recurse -ExcludeEmpty:$ExcludeEmpty
-                        }
-                        else {
-                            $convertedArray += $item
-                        }
-                    }
-                    $value = $convertedArray
-                }
+                $value = ConvertTo-HashTableValue -Value $value -ExcludeEmpty:$ExcludeEmpty -Ordered:$Ordered
             }
 
-            $hashtable[$property.Name] = $value
+            $hashtable[$entry.Name] = $value
         }
 
         return $hashtable
     }
+}
+
+function ConvertTo-HashTableValue {
+    # Recursion helper for ConvertTo-HashTable -Recurse (nested objects and arrays of any depth)
+    [CmdletBinding()]
+    [OutputType([object])]
+    param(
+        [AllowNull()]
+        [object]$Value,
+
+        [switch]$ExcludeEmpty,
+
+        [switch]$Ordered
+    )
+
+    if ($Value -is [System.Management.Automation.PSCustomObject] -or $Value -is [System.Collections.IDictionary]) {
+        return (ConvertTo-HashTable -InputObject $Value -Recurse -ExcludeEmpty:$ExcludeEmpty -Ordered:$Ordered)
+    }
+    if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [string]) {
+        $list = New-Object System.Collections.Generic.List[object]
+        foreach ($item in $Value) {
+            $list.Add((ConvertTo-HashTableValue -Value $item -ExcludeEmpty:$ExcludeEmpty -Ordered:$Ordered))
+        }
+        # The leading comma stops PowerShell from unrolling one-item arrays
+        return , $list.ToArray()
+    }
+    return $Value
 }

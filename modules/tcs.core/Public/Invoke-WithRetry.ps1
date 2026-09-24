@@ -17,12 +17,15 @@
     The maximum number of retry attempts after the initial failure. Defaults to 3.
 
 .PARAMETER DelaySeconds
-    The base delay in seconds between retry attempts. Defaults to 2.
+    The delay in seconds before the first retry. Fractions are allowed (e.g. 0.5). Defaults to 2.
 
 .PARAMETER BackoffMultiplier
     A multiplier applied to the delay on each successive retry. Set to a value greater
     than 1 for exponential backoff (e.g., 2 doubles the delay each retry). Defaults to 1
     (constant delay).
+
+.PARAMETER MaxDelaySeconds
+    The longest delay allowed between retries when backoff is used. Defaults to 300.
 
 .PARAMETER RetryableExceptions
     An optional array of .NET exception types to retry on. When specified, only exceptions
@@ -56,11 +59,11 @@
     Invoke-WithRetry -ScriptBlock { Connect-Database } -MaxRetries 3 -RetryableExceptions @([System.Net.Sockets.SocketException]) -OnRetry $onRetry
 
     Retries only on SocketException, invoking a warning callback on each retry.
+    Exception types match subclasses too, so [System.Net.WebException] also matches its derived types.
 
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.2.0
 
     This function is part of the tcs.core module and provides robust retry logic
     suitable for network operations, transient fault handling, and resilient scripting.
@@ -76,13 +79,20 @@ function Invoke-WithRetry {
         [scriptblock]$ScriptBlock,
 
         [Parameter(HelpMessage = "Maximum number of retry attempts.")]
+        [ValidateRange(0, 1000)]
         [int]$MaxRetries = 3,
 
-        [Parameter(HelpMessage = "Base delay in seconds between retries.")]
-        [int]$DelaySeconds = 2,
+        [Parameter(HelpMessage = "Delay in seconds before the first retry.")]
+        [ValidateRange(0, 86400)]
+        [double]$DelaySeconds = 2,
 
         [Parameter(HelpMessage = "Multiplier applied to the delay on each successive retry.")]
+        [ValidateRange(1, 100)]
         [double]$BackoffMultiplier = 1,
+
+        [Parameter(HelpMessage = "Longest delay allowed between retries.")]
+        [ValidateRange(0, 86400)]
+        [double]$MaxDelaySeconds = 300,
 
         [Parameter(HelpMessage = "Optional list of exception types to retry on.")]
         [type[]]$RetryableExceptions,
@@ -92,22 +102,20 @@ function Invoke-WithRetry {
     )
 
     $attempt = 0
-    $lastException = $null
 
     while ($true) {
         try {
-            $result = & $ScriptBlock
-            return $result
+            return (& $ScriptBlock)
         }
         catch {
-            $lastException = $_.Exception
+            $lastError = $_
             $attempt++
 
             # Check if we should retry based on exception type
             if ($RetryableExceptions) {
                 $shouldRetry = $false
                 foreach ($exType in $RetryableExceptions) {
-                    if ($lastException -is $exType) {
+                    if ($lastError.Exception -is $exType) {
                         $shouldRetry = $true
                         break
                     }
@@ -118,18 +126,22 @@ function Invoke-WithRetry {
             }
 
             if ($attempt -gt $MaxRetries) {
-                throw $lastException
+                # Rethrow the original error record so callers keep the full error details
+                throw $lastError
             }
 
-            $currentDelay = $DelaySeconds * [Math]::Pow($BackoffMultiplier, $attempt)
+            # First retry waits DelaySeconds, then DelaySeconds * BackoffMultiplier, ...
+            $currentDelay = [Math]::Min($DelaySeconds * [Math]::Pow($BackoffMultiplier, $attempt - 1), $MaxDelaySeconds)
 
-            Write-Verbose "Attempt $attempt of $MaxRetries failed. Retrying in $currentDelay seconds... Exception: $($lastException.Message)"
+            Write-Verbose "Attempt $attempt of $($MaxRetries + 1) failed. Retrying in $currentDelay seconds... Exception: $($lastError.Exception.Message)"
 
             if ($OnRetry) {
-                & $OnRetry $lastException $attempt
+                & $OnRetry $lastError.Exception $attempt
             }
 
-            Start-Sleep -Seconds $currentDelay
+            if ($currentDelay -gt 0) {
+                Start-Sleep -Milliseconds ([int][Math]::Round($currentDelay * 1000))
+            }
         }
     }
 }

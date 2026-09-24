@@ -52,8 +52,7 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.2.0
-    
+
     This function is part of the tcs.core module and is commonly used for formatting
     strings to match JavaScript or JSON property naming conventions.
 #>
@@ -65,21 +64,22 @@ function ConvertTo-CamelCase {
         [AllowEmptyString()]
         [string]$Value
     )
-    
+
     process {
-        if ([string]::IsNullOrEmpty($Value)) { 
-            return $Value 
+        if ([string]::IsNullOrEmpty($Value)) {
+            return $Value
         }
         # Split on spaces, underscores, hyphens, and PascalCase boundaries
-        $words = [regex]::Split($Value, '[\s_\-]+|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])') | Where-Object { $_ -ne '' }
+        # @() keeps a single word as an array instead of a string
+        $words = @([regex]::Split($Value, '[\s_\-]+|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])') | Where-Object { $_ -ne '' })
         if ($words.Count -eq 0) {
             return $Value
         }
-        $result = $words[0].ToLower()
+        $result = $words[0].ToLowerInvariant()
         for ($i = 1; $i -lt $words.Count; $i++) {
             $word = $words[$i]
             if ($word.Length -gt 0) {
-                $result += $word.Substring(0, 1).ToUpper() + $word.Substring(1).ToLower()
+                $result += $word.Substring(0, 1).ToUpperInvariant() + $word.Substring(1).ToLowerInvariant()
             }
         }
         return $result

@@ -1,52 +1,67 @@
-﻿TOPIC
+TOPIC
     about_tcs.core
 
-    ABOUT TOPIC NOTE:
-    The first header of the about topic should be the topic name.
-    The second header contains the lookup name used by the help system.
-    
-    IE:
-    # Some Help Topic Name
-    ## SomeHelpTopicFileName
-    
-    This will be transformed into the text file
-    as `about_SomeHelpTopicFileName`.
-    Do not include file extensions.
-    The second header should have no spaces.
-
 SHORT DESCRIPTION
-    {{ Short Description Placeholder }}
-
-    ABOUT TOPIC NOTE:
-    About topics can be no longer than 80 characters wide when rendered to text.
-    Any topics greater than 80 characters will be automatically wrapped.
-    The generated about topic will be encoded UTF-8.
+    Shared configuration, update checks, telemetry and utilities for tcs modules.
 
 LONG DESCRIPTION
-    {{ Long Description Placeholder }}
+    tcs.core is the base module for the TheCodeSaiyan PowerShell suite
+    (tcs.azure, tcs.confluence, tcs.jira, tcs.intune.packaging, tcs.utils).
 
-Optional Subtopics
-    {{ Optional Subtopic Placeholder }}
+    Each tcs module calls Get-ModuleConfig when it loads. The settings file for
+    a module is:
+
+        <ApplicationData>/PowerShell/Config/<ModuleName>/Module.Config.json
+
+    It is created with defaults the first time the module loads and is changed
+    with Set-ModuleConfig.
+
+    Update check
+        Get-ModuleStatus checks the PowerShell Gallery for a newer version at
+        most once every UpdateCheckIntervalHours (default 24).
+
+    Telemetry
+        Invoke-TelemetryCollection sends anonymous usage events (command name,
+        duration, success, exception type, PowerShell and OS version and a
+        random installation ID). No user, machine, path or error text is sent.
+        Nothing is sent until a TelemetryUri is configured.
+
+    Secret protection
+        Protect-ConfigValue and Unprotect-ConfigValue use DPAPI on Windows and
+        AES-256 with HMAC-SHA256 on Linux and macOS.
+
+ENVIRONMENT VARIABLES
+    TCS_TELEMETRY_OPTOUT=1   Turns telemetry off for all tcs modules.
+    TCS_SKIP_UPDATE_CHECK=1  Turns the gallery update check off.
+    TCS_CONFIG_ROOT          Moves the settings folder.
+    TCS_TELEMETRY_URI        Overrides the telemetry endpoint.
+    TCS_TELEMETRY_APIKEY     Overrides the telemetry API key.
+    TCS_MACHINE_KEY_PATH     Linux/macOS LocalMachine protection key location.
 
 EXAMPLES
-    {{ Code or descriptive examples of how to leverage the functions described.
-    }}
+    Turn off update warnings for tcs.core:
 
-NOTE
-    {{ Note Placeholder - Additional information that a user needs to know.}}
+        Set-ModuleConfig -ModuleName tcs.core -UpdateWarning $false
 
-TROUBLESHOOTING NOTE
-    {{ Troubleshooting Placeholder - Warns users of bugs}}
-    {{ Explains behavior that is likely to change with fixes }}
+    Turn off telemetry for every tcs module:
+
+        $env:TCS_TELEMETRY_OPTOUT = '1'
+
+    Protect a secret for the current user:
+
+        $protected = Protect-ConfigValue -Value 'P@ssw0rd'
+        Unprotect-ConfigValue -EncryptedValue $protected
 
 SEE ALSO
-    {{ See also placeholder }}
-    {{ You can also list related articles, blogs, and video URLs. }}
+    Get-ModuleConfig
+    Set-ModuleConfig
+    Get-ModuleStatus
+    Invoke-TelemetryCollection
+    Protect-ConfigValue
+    https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core
 
 KEYWORDS
-    {{List alternate names or titles for this topic that readers might use.}}
-    - {{ Keyword Placeholder }}
-    - {{ Keyword Placeholder }}
-    - {{ Keyword Placeholder }}
-    - {{ Keyword Placeholder }}
-
+    tcs
+    TheCodeSaiyan
+    Configuration
+    Telemetry

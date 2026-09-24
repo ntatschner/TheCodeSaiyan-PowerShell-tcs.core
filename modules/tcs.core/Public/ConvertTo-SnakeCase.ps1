@@ -36,7 +36,6 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.2.0
 
     This function is part of the tcs.core module and is commonly used for formatting
     strings to match Python or database column naming conventions.
@@ -58,11 +57,12 @@ function ConvertTo-SnakeCase {
             return $Value
         }
         # Split on spaces, underscores, hyphens, and PascalCase boundaries
-        $words = [regex]::Split($Value, '[\s_\-]+|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])') | Where-Object { $_ -ne '' }
+        # @() keeps a single word as an array instead of a string
+        $words = @([regex]::Split($Value, '[\s_\-]+|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])') | Where-Object { $_ -ne '' })
         if ($words.Count -eq 0) {
             return $Value
         }
-        $result = ($words | ForEach-Object { $_.ToLower() }) -join '_'
+        $result = ($words | ForEach-Object { $_.ToLowerInvariant() }) -join '_'
         return $result
     }
 }

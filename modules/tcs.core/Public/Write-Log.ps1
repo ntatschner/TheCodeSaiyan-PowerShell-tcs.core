@@ -33,13 +33,18 @@
     The timestamp format string used for log entries. Defaults to 'yyyy-MM-dd HH:mm:ss'.
     Accepts any valid .NET DateTime format string.
 
+.PARAMETER UseUtc
+    Writes timestamps in UTC instead of local time.
+
+.PARAMETER PassThru
+    Returns the formatted log line.
+
 .INPUTS
     System.String
     You can pipe one or more strings to Write-Log.
 
 .OUTPUTS
-    None
-    This function does not produce pipeline output.
+    None, or System.String when PassThru is specified.
 
 .EXAMPLE
     Write-Log -Message "Application started successfully."
@@ -60,17 +65,20 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
-    Version: 0.2.0
 
-    This function is part of the tcs.core module and provides a lightweight structured
-    logging mechanism suitable for scripts and module development.
+    File writes append with shared read/write access, so several processes can log to the
+    same file. Files are written as UTF-8 without a byte order mark.
 
 .LINK
     https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/
 #>
 function Write-Log {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '',
+        Justification = 'Coloured console output is the purpose of this function; Write-Host writes to the information stream (6) on PowerShell 5+.')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidOverwritingBuiltInCmdlets', '',
+        Justification = 'Write-Log is not a built-in command in current PowerShell versions; the name is part of the public API.')]
     [CmdletBinding()]
-    [OutputType([void])]
+    [OutputType([void], [string])]
     param(
         [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0, HelpMessage = "The log message to write.")]
         [string]$Message,
@@ -89,11 +97,19 @@ function Write-Log {
         [switch]$NoConsole,
 
         [Parameter(HelpMessage = "Timestamp format string for log entries.")]
-        [string]$DateFormat = 'yyyy-MM-dd HH:mm:ss'
+        [ValidateNotNullOrEmpty()]
+        [string]$DateFormat = 'yyyy-MM-dd HH:mm:ss',
+
+        [Parameter(HelpMessage = "Write timestamps in UTC.")]
+        [switch]$UseUtc,
+
+        [Parameter(HelpMessage = "Return the formatted log line.")]
+        [switch]$PassThru
     )
 
     process {
-        $timestamp = Get-Date -Format $DateFormat
+        $now = if ($UseUtc) { [datetime]::UtcNow } else { [datetime]::Now }
+        $timestamp = $now.ToString($DateFormat, [System.Globalization.CultureInfo]::InvariantCulture)
 
         if ([string]::IsNullOrWhiteSpace($Component)) {
             $formattedMessage = "[$timestamp][$Level] $Message"
@@ -127,7 +143,20 @@ function Write-Log {
             if ($logDirectory -and -not (Test-Path -Path $logDirectory)) {
                 New-Item -Path $logDirectory -ItemType Directory -Force | Out-Null
             }
-            Add-Content -Path $LogPath -Value $formattedMessage -Encoding UTF8
+            $utf8NoBom = New-Object System.Text.UTF8Encoding -ArgumentList $false
+            $bytes = $utf8NoBom.GetBytes($formattedMessage + [Environment]::NewLine)
+            $resolvedLogPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($LogPath)
+            $stream = New-Object System.IO.FileStream -ArgumentList $resolvedLogPath, ([System.IO.FileMode]::Append), ([System.IO.FileAccess]::Write), ([System.IO.FileShare]::ReadWrite)
+            try {
+                $stream.Write($bytes, 0, $bytes.Length)
+            }
+            finally {
+                $stream.Dispose()
+            }
+        }
+
+        if ($PassThru) {
+            $formattedMessage
         }
     }
 }

@@ -1,9 +1,9 @@
 @{
-    ModuleVersion        = '0.2.0'
+    ModuleVersion        = '0.3.0'
     GUID                 = 'a61ffd6a-dac4-4de4-a830-0e58a0535eaa'
     Author               = 'Nigel Tatschner'
     CompanyName          = 'TheCodeSaiyan'
-    Copyright            = '(c) 2024 Nigel Tatschner. All rights reserved.'
+    Copyright            = '(c) 2024-2026 Nigel Tatschner. All rights reserved.'
     Description          = 'Core functions required for the suite of modules including configuration management, dynamic parameters, telemetry collection, structured logging, retry logic, string casing utilities, and config value protection.'
     CompatiblePSEditions = @('Desktop', 'Core')
     PowerShellVersion    = '5.1'
@@ -14,6 +14,10 @@
         'ConvertTo-KebabCase',
         'ConvertTo-PascalCase',
         'ConvertTo-SnakeCase',
+        'Get-ModuleConfig',
+        'Get-ModuleStatus',
+        'Get-ParameterValues',
+        'Invoke-TelemetryCollection',
         'Invoke-WithRetry',
         'New-DynamicParameter',
         'New-TemporaryDirectory',
@@ -28,9 +32,10 @@
     AliasesToExport      = @()
     PrivateData          = @{
         PSData = @{
-            Tags         = @('Core', 'Utility', 'Module', 'Telemetry', 'Configuration', 'DynamicParameters', 'Logging', 'Retry', 'StringCasing', 'Security')
+            Tags         = @('Core', 'Utility', 'Module', 'Telemetry', 'Configuration', 'DynamicParameters', 'Logging', 'Retry', 'StringCasing', 'Security', 'PSEdition_Desktop', 'PSEdition_Core', 'Windows', 'Linux', 'MacOS')
             ProjectUri   = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core'
-            ReleaseNotes = 'v0.2.0: Added Write-Log, Invoke-WithRetry, ConvertTo-HashTable, Test-IsElevated, New-TemporaryDirectory, Protect/Unprotect-ConfigValue, ConvertTo-PascalCase/KebabCase/SnakeCase. Improved ConvertTo-CamelCase, Set-ModuleConfig, Get-ModuleConfig, Get-ModuleStatus, New-DynamicParameter, Get-ParameterValues. Security hardening for telemetry. Bug fixes.'
+            LicenseUri   = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/blob/main/LICENSE'
+            ReleaseNotes = 'https://github.com/ntatschner/TheCodeSaiyan-PowerShell-tcs.core/blob/main/CHANGELOG.md'
         }
     }
     HelpInfoURI          = 'https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/'
