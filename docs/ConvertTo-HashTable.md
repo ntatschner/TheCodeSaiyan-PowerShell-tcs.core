@@ -13,18 +13,23 @@ Converts a PSCustomObject to a hashtable.
 ## SYNTAX
 
 ```
-ConvertTo-HashTable [-InputObject] <PSObject> [-Recurse] [-ExcludeEmpty] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+ConvertTo-HashTable [-InputObject] <PSObject> [-Recurse] [-ExcludeEmpty] [-Ordered]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-The ConvertTo-HashTable function converts a PSCustomObject (or any PSObject) into an
-ordered hashtable.
+The ConvertTo-HashTable function converts a PSCustomObject (or any PSObject) into a
+hashtable (or an ordered dictionary with -Ordered).
 It supports recursive conversion of nested PSCustomObjects and arrays,
 as well as filtering out properties with null or empty values.
 This is useful when working
 with data from ConvertFrom-Json or other cmdlets that produce PSCustomObjects and you need
 a hashtable for splatting, comparison, or other operations.
+
+DEPRECATED: ConvertTo-HashTable writes a deprecation warning (once per session) and is
+planned for removal in tcs.core 1.0.
+On PowerShell 7 use ConvertFrom-Json -AsHashtable;
+for other objects build the hashtable from $object.PSObject.Properties.
 
 ## EXAMPLES
 
@@ -60,17 +65,14 @@ Accepts pipeline input, allowing multiple objects
 to be converted in sequence.
 
 ```yaml
-Type:PSObject
-Parameter Sets:   (All)
+Type: PSObject
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
+Position: 1
 Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: True (ByPropertyName, ByValue)
-Accept wildcard characters: False
+Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
 ```
 
@@ -79,18 +81,14 @@ When specified, recursively converts nested PSCustomObjects and arrays of PSCust
 into hashtables.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -99,18 +97,29 @@ When specified, excludes properties with null or empty string values from the re
 hashtable.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
 Accept wildcard characters: False
+```
+
+### -Ordered
+Returns an ordered dictionary that keeps the property order of the input object.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
@@ -118,18 +127,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -143,11 +148,10 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## OUTPUTS
 
 ### System.Collections.Hashtable
-### Returns a hashtable representing the properties of the input object.
+### System.Collections.Specialized.OrderedDictionary (with -Ordered)
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
 This function is part of the tcs.core module and provides a convenient utility for
 converting PSCustomObjects to hashtables, which is a common need when working with

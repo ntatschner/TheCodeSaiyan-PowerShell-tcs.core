@@ -1,7 +1,7 @@
 ---
 external help file: tcs.core-help.xml
 Module Name: tcs.core
-online version: https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/
+online version:
 schema: 2.0.0
 ---
 
@@ -23,6 +23,12 @@ meaningful parameter values while filtering out common PowerShell automatic vari
 and system parameters.
 This is useful for configuration management and parameter
 processing where only user-specified values are needed.
+
+DEPRECATED: Get-ParameterValues writes a deprecation warning (once per session) and is
+planned for removal in tcs.core 1.0.
+Use $PSBoundParameters directly, removing the keys
+you do not want, for example:
+$params = @{} + $PSBoundParameters; $params.Remove('Verbose')
 
 ## EXAMPLES
 
@@ -59,17 +65,14 @@ The PSBoundParameters hashtable from a PowerShell function, containing all param
 that were explicitly provided by the caller.
 
 ```yaml
-Type:Hashtable
-Parameter Sets:   (All)
+Type: Hashtable
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
-Default value: None
+Position: 1
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -80,16 +83,13 @@ set of common PowerShell automatic variables like 'Verbose', 'Debug', 'ErrorActi
 
 ```yaml
 Type: String[]
-Parameter Sets:   (All)
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 2Default
-Default value: None
+Position: 2
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -102,16 +102,13 @@ all non-excluded parameters are returned.
 
 ```yaml
 Type: String[]
-Parameter Sets:   (All)
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 3Default
-Default value: None
+Position: 3
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -119,18 +116,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -149,11 +142,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
-This is a private function used internally by the tcs.core module for parameter
-processing and configuration management.
-It automatically excludes common PowerShell
-system parameters to provide clean parameter sets for further processing.
+Common parameters (Verbose, ErrorAction, WhatIf, Confirm, ...) are always excluded.
 
 ## RELATED LINKS

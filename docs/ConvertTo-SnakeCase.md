@@ -18,7 +18,8 @@ ConvertTo-SnakeCase [-Value] <String> [-ProgressAction <ActionPreference>] [<Com
 
 ## DESCRIPTION
 The ConvertTo-SnakeCase function takes a string input and converts it to snake_case format.
-It splits the input on spaces, underscores, hyphens, and PascalCase boundaries, then
+It splits the input on spaces, underscores, hyphens, case changes (including letters
+outside A-Z, such as 'Ä') and a digit followed by a capital ('Version2Update'), then
 lowercases each word and joins them with underscores.
 This is useful for formatting
 database column names, Python-style identifiers, or other identifiers that need to follow
@@ -52,17 +53,14 @@ Accepts pipeline input and empty strings.
 If the value is null or empty, the function returns the original value unchanged.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
+Position: 1
 Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: True (ByPropertyName, ByValue)
-Accept wildcard characters: False
+Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
 ```
 
@@ -70,18 +68,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -99,7 +93,6 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
 This function is part of the tcs.core module and is commonly used for formatting
 strings to match Python or database column naming conventions.

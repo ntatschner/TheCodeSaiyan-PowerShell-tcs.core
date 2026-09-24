@@ -54,18 +54,14 @@ Stores the elevation status in a variable for later use.
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -83,7 +79,6 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
 This function is part of the tcs.core module and provides a cross-platform way to
 check for elevated privileges in PowerShell 7+ environments.

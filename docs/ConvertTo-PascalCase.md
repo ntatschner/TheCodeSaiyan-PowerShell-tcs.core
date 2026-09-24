@@ -13,12 +13,14 @@ Converts a string to PascalCase format.
 ## SYNTAX
 
 ```
-ConvertTo-PascalCase [-Value] <String> [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ConvertTo-PascalCase [-Value] <String> [-PreserveAcronyms] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
 The ConvertTo-PascalCase function takes a string input and converts it to PascalCase format.
-It splits the input on spaces, underscores, hyphens, and PascalCase boundaries, then
+It splits the input on spaces, underscores, hyphens, case changes (including letters
+outside A-Z, such as 'Ä') and a digit followed by a capital ('Version2Update'), then
 capitalizes the first letter of each word and lowercases the rest before joining them.
 This is useful for formatting class names, type names, or other identifiers that need
 to follow PascalCase naming conventions.
@@ -43,6 +45,18 @@ Returns: "HelloWorld"
 Returns: "HelloWorld"
 ```
 
+### EXAMPLE 4
+```
+ConvertTo-PascalCase -Value 'user2FA'
+Returns: "User2Fa"
+```
+
+### EXAMPLE 5
+```
+ConvertTo-PascalCase -Value 'parse_XML_file' -PreserveAcronyms
+Returns: "ParseXMLFile"
+```
+
 ## PARAMETERS
 
 ### -Value
@@ -51,17 +65,31 @@ Accepts pipeline input and empty strings.
 If the value is null or empty, the function returns the original value unchanged.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
+Position: 1
 Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: True (ByPropertyName, ByValue)
+Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
+```
+
+### -PreserveAcronyms
+Keeps words written in capitals (at least two capital letters, such as 'XML', 'FA' or
+'HTML5') as they are instead of capitalising only their first letter: 'XMLHttpRequest'
+becomes 'XMLHttpRequest' instead of 'XmlHttpRequest'.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
@@ -69,18 +97,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -98,7 +122,6 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
 This function is part of the tcs.core module and is commonly used for formatting
 strings to match .NET type or class naming conventions.

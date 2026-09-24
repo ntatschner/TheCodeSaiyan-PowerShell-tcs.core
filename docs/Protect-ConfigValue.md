@@ -1,95 +1,119 @@
 ---
 external help file: tcs.core-help.xml
 Module Name: tcs.core
-online version: https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/
+online version:
 schema: 2.0.0
 ---
 
 # Protect-ConfigValue
 
 ## SYNOPSIS
-Encrypts a string value for secure config storage using DPAPI.
+Encrypts a string value for secure storage in configuration files.
 
 ## SYNTAX
 
+### Scope (Default)
 ```
-Protect-ConfigValue [-Value] <String> [[-Scope] <String>] [-ProgressAction <ActionPreference>]
+Protect-ConfigValue [-Value] <String> [-Scope <String>] [-ProgressAction <ActionPreference>]
  [<CommonParameters>]
 ```
 
+### Key
+```
+Protect-ConfigValue [-Value] <String> -Key <Byte[]> [-ProgressAction <ActionPreference>] [<CommonParameters>]
+```
+
 ## DESCRIPTION
-The Protect-ConfigValue function encrypts a plaintext string for secure storage in
-configuration files.
-It uses Windows Data Protection API (DPAPI) to encrypt the value.
-In 'CurrentUser' scope (default), the encrypted string can only be decrypted by the
-same user on the same machine.
-In 'LocalMachine' scope, a machine-derived key is used
-so any user on the same machine can decrypt the value.
+The Protect-ConfigValue function encrypts a plaintext string and returns a self-describing
+protected string ('tcs:v1:\<method\>:\<data\>') that Unprotect-ConfigValue can decrypt.
+
+Windows:
+  Uses the Windows Data Protection API (DPAPI).
+  - CurrentUser: only the same user on the same machine can decrypt.
+  - LocalMachine: any user on the same machine can decrypt.
+
+Linux and macOS (DPAPI is not available):
+  Uses AES-256-CBC with HMAC-SHA256 authentication and a random 32-byte key file.
+  - CurrentUser: key stored in the user's config folder
+    (~/.config/PowerShell/Config/tcs.core/protection.key, mode 600).
+Created on first use.
+  - LocalMachine: key stored at /etc/tcs.core/protection.key (mode 644, override with
+    the TCS_MACHINE_KEY_PATH environment variable).
+Must be created once by root.
+
+Any platform:
+  Supply -Key to encrypt with your own 32-byte key, for example to share a protected
+  value between machines or with a CI pipeline.
+The same key is required to decrypt.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```
 Protect-ConfigValue -Value "MySecretPassword"
-Encrypts the string using the current user's DPAPI context. Only the same user on the
-same machine can decrypt it.
 ```
+
+Encrypts the string so that only the current user on this machine can decrypt it.
 
 ### EXAMPLE 2
 ```
 "api-key-12345" | Protect-ConfigValue -Scope 'LocalMachine'
-Encrypts the string using a machine-derived key. Any user on the same machine can
-decrypt it using Unprotect-ConfigValue with the LocalMachine scope.
 ```
+
+Encrypts the string so that any user on this machine can decrypt it.
 
 ### EXAMPLE 3
 ```
-$encrypted = Protect-ConfigValue -Value "ConnectionString" -Scope 'CurrentUser'
-Stores the encrypted value in a variable for later use in configuration files.
+$key = [byte[]]::new(32); [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($key)
+$protected = Protect-ConfigValue -Value "ConnectionString" -Key $key
 ```
+
+Encrypts the string with a caller-managed key that can be used on any machine.
 
 ## PARAMETERS
 
 ### -Value
 The plaintext string value to protect.
-This value will be encrypted and returned as
-an encrypted standard string.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
+Position: 1
 Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: True (ByPropertyName, ByValue)
-Accept wildcard characters: False
+Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
 ```
 
 ### -Scope
-The DPAPI scope to use for encryption.
-Valid values are 'CurrentUser' (default) and
-'LocalMachine'.
-CurrentUser scope ties decryption to the current user account.
-LocalMachine scope uses a machine-derived key allowing any user on the same machine
-to decrypt the value.
+Who can decrypt the value: 'CurrentUser' (default) or 'LocalMachine'.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: Scope
 Aliases:
+
 Required: False
-Position: 2Default
-Default value: None
+Position: Named
 Default value: CurrentUser
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
 Accept wildcard characters: False
+```
+
+### -Key
+A 32-byte key to encrypt with instead of the platform key store.
+
+```yaml
+Type: Byte[]
+Parameter Sets: Key
+Aliases:
+
+Required: True
+Position: Named
+Default value: None
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
@@ -97,18 +121,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -122,21 +142,15 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## OUTPUTS
 
 ### System.String
-### Returns the encrypted string representation of the input value.
+### Returns the protected string.
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
-CurrentUser scope uses DPAPI user context and is only decryptable by the same user
-on the same machine.
-LocalMachine scope uses a SHA256 key derived from the machine
-name and can be decrypted by any user on the same machine.
-
-This function is part of the tcs.core module and is designed to work in tandem with
-Unprotect-ConfigValue for secure configuration value storage.
+Values produced by tcs.core 0.2.x (no 'tcs:v1' prefix) can still be read by
+Unprotect-ConfigValue; protect them again to move them to the new format.
 
 ## RELATED LINKS
 
-[https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/](https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/)
+[Unprotect-ConfigValue]()
 

@@ -1,7 +1,7 @@
 ---
 external help file: tcs.core-help.xml
 Module Name: tcs.core
-online version: https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/
+online version:
 schema: 2.0.0
 ---
 
@@ -13,78 +13,111 @@ Decrypts a value previously protected by Protect-ConfigValue.
 ## SYNTAX
 
 ```
-Unprotect-ConfigValue [-EncryptedValue] <String> [[-Scope] <String>] [-ProgressAction <ActionPreference>]
- [<CommonParameters>]
+Unprotect-ConfigValue [-EncryptedValue] <String> [-Scope <String>] [-Key <Byte[]>] [-AsSecureString]
+ [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-The Unprotect-ConfigValue function decrypts an encrypted string that was produced by
+The Unprotect-ConfigValue function decrypts a protected string produced by
 Protect-ConfigValue.
-The Scope parameter must match the scope used during encryption.
-In 'CurrentUser' scope (default), DPAPI user context is used.
-In 'LocalMachine' scope,
-a machine-derived key is used for decryption.
+The protection method is read from the value itself, so Scope does
+not need to be given for values created by tcs.core 0.3.0 or later.
+
+Values created by tcs.core 0.2.x (without the 'tcs:v1' prefix) are still supported, with
+a warning that recommends protecting the value again.
+Their format shows which scope was
+used, so Scope does not need to match.
+LocalMachine values are tried with the computer
+name from COMPUTERNAME and \[Environment\]::MachineName, and with an empty name (what
+0.2.x used on Linux and macOS, where COMPUTERNAME is not set).
+
+A value that is neither format (for example plain text that was never protected) gives
+a clear error and no warning.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```
-Unprotect-ConfigValue -EncryptedValue $encrypted
-Decrypts the value using the current user's DPAPI context.
+Unprotect-ConfigValue -EncryptedValue $protected
 ```
+
+Decrypts a value protected with Protect-ConfigValue.
 
 ### EXAMPLE 2
 ```
-$encrypted | Unprotect-ConfigValue -Scope 'LocalMachine'
-Decrypts a value that was encrypted with LocalMachine scope using the machine-derived key.
+$protected | Unprotect-ConfigValue -AsSecureString
 ```
+
+Decrypts the value and returns it as a SecureString.
 
 ### EXAMPLE 3
 ```
-$plaintext = Unprotect-ConfigValue -EncryptedValue $encrypted -Scope 'CurrentUser'
-Decrypts the value and stores the plaintext result in a variable.
+Unprotect-ConfigValue -EncryptedValue $protected -Key $key
 ```
+
+Decrypts a value that was protected with a caller-managed key.
 
 ## PARAMETERS
 
 ### -EncryptedValue
-The encrypted string to decrypt.
-This should be a value previously produced by
-Protect-ConfigValue.
+The protected string to decrypt.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
+Position: 1
 Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: True (ByPropertyName, ByValue)
-Accept wildcard characters: False
+Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
 ```
 
 ### -Scope
-The DPAPI scope that was used during encryption.
-Valid values are 'CurrentUser' (default)
-and 'LocalMachine'.
-This must match the scope used when the value was originally protected.
+Kept for compatibility.
+The scope of legacy (0.2.x) values is now detected from the
+value, so this parameter is ignored.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position: 2Default
-Default value: None
+Position: Named
 Default value: CurrentUser
 Accept pipeline input: False
-input:False
+Accept wildcard characters: False
+```
+
+### -Key
+The 32-byte key used with Protect-ConfigValue -Key.
+
+```yaml
+Type: Byte[]
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
+```
+
+### -AsSecureString
+Returns the decrypted value as a SecureString instead of plain text.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
@@ -92,18 +125,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -113,24 +142,19 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## INPUTS
 
 ### System.String
-### You can pipe one or more encrypted strings to Unprotect-ConfigValue.
+### You can pipe one or more protected strings to Unprotect-ConfigValue.
 ## OUTPUTS
 
 ### System.String
-### Returns the decrypted plaintext string.
+### System.Security.SecureString (with -AsSecureString)
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
-The Scope must match the scope used during encryption with Protect-ConfigValue.
-If the wrong scope, user, or machine is used, decryption will fail and an error
-will be written.
-
-This function is part of the tcs.core module and is designed to work in tandem with
-Protect-ConfigValue for secure configuration value storage.
+Decryption fails with an error if the value was protected by another user, on another
+machine, with a different key, or if it has been modified.
 
 ## RELATED LINKS
 
-[https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/](https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/)
+[Protect-ConfigValue]()
 

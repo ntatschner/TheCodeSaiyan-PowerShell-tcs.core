@@ -1,108 +1,133 @@
 ---
 external help file: tcs.core-help.xml
 Module Name: tcs.core
-online version: https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/
+online version:
 schema: 2.0.0
 ---
 
 # Get-ModuleStatus
 
 ## SYNOPSIS
-Checks the status of a PowerShell module and optionally displays update notifications.
+Checks whether a newer version of a module is available in the PowerShell Gallery.
 
 ## SYNTAX
 
 ```
-Get-ModuleStatus [-ShowMessage] [-ModuleName] <String> [-ModulePath] <String>
+Get-ModuleStatus [-ShowMessage] [-ModuleName] <String> [-ModulePath] <String> [[-CacheHours] <Int32>] [-Force]
  [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
-The Get-ModuleStatus function compares the currently installed version of a module
-with the latest version available in the PowerShell Gallery.
-It always returns a
-structured PSCustomObject with version information.
-When the ShowMessage parameter
-is specified, it also displays a warning message if an update is available.
-This function is typically called during module import to notify users of available updates.
+The Get-ModuleStatus function compares the installed version of a module with the latest
+version in the PowerShell Gallery and returns a status object.
+
+The gallery is queried at most once per CacheHours (default 24).
+The result is cached in
+\<ApplicationData\>/PowerShell/Config/\<ModuleName\>/UpdateCheck.json, so importing a module
+does not make a network call every time.
+Failed lookups (for example when offline) are
+cached too, so they are not retried on every import.
+
+The function never throws: if the check fails it writes a verbose message and returns a
+status object with LatestVersion set to $null.
+
+Set the TCS_SKIP_UPDATE_CHECK environment variable to 1 to turn the check off (for example
+in CI).
+-Force overrides this and the cache.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 ```
-Get-ModuleStatus -ModuleName "tcs.core" -ModulePath "C:\Modules\tcs.core" -ShowMessage
+Get-ModuleStatus -ModuleName 'tcs.core' -ModulePath (Get-Module tcs.core).ModuleBase -ShowMessage
 ```
 
-Checks for updates to the tcs.core module, displays a message if an update is available,
-and returns a status object.
+Warns if a newer tcs.core is available, using the cached result if it is less than a day old.
 
 ### EXAMPLE 2
 ```
-$status = Get-ModuleStatus -ModuleName "MyModule" -ModulePath $ModulePath
-if ($status.UpdateAvailable) { Write-Host "Update available!" }
+(Get-ModuleStatus -ModuleName 'tcs.jira' -ModulePath $path -Force).UpdateAvailable
 ```
 
-Checks the module status and uses the returned object to determine if an update is available.
+Queries the gallery now and returns whether an update is available.
 
 ## PARAMETERS
 
 ### -ShowMessage
-Switch parameter that determines whether to display update notification messages.
-When specified, the function will show a warning if a newer version is available.
+Writes a warning when an update is available.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -ModuleName
-The name of the module to check for updates.
-This must match the module name
-as it appears in the PowerShell Gallery.
+The name of the module as published in the PowerShell Gallery.
+Only letters, digits, '.',
+'_' and '-' are allowed.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
-Default value: None
+Position: 1
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
 ### -ModulePath
-The local file system path where the module is installed.
-This is used to
-locate the module manifest file (.psd1) to determine the current version.
+The folder that contains the module manifest (\<ModuleName\>.psd1).
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 2Default
+Position: 2
 Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
 Accept pipeline input: False
 Accept wildcard characters: False
+```
+
+### -CacheHours
+How long a gallery result is reused, in hours.
+0 always queries the gallery.
+
+```yaml
+Type: Int32
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 3
+Default value: 24
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Force
+Queries the gallery now, ignoring the cache and TCS_SKIP_UPDATE_CHECK.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
@@ -110,18 +135,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -135,17 +156,13 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## OUTPUTS
 
 ### PSCustomObject
-### Returns a PSCustomObject with ModuleName, CurrentVersion, LatestVersion, and
-### UpdateAvailable properties. May also display warning messages when ShowMessage
-### is specified and updates are available.
+### ModuleName, CurrentVersion, LatestVersion, UpdateAvailable, CheckedAt (UTC) and Source
+### ('Gallery', 'Cache' or 'Skipped').
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
-This is a private function used internally by the tcs.core module for update
-checking.
-It gracefully handles errors and will not interrupt module loading
-if the PowerShell Gallery is unavailable or if network issues occur.
+Uses Find-PSResource (Microsoft.PowerShell.PSResourceGet) when available, otherwise
+Find-Module (PowerShellGet).
 
 ## RELATED LINKS

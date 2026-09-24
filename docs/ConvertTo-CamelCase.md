@@ -13,12 +13,14 @@ Converts a string to camelCase format.
 ## SYNTAX
 
 ```
-ConvertTo-CamelCase [-Value] <String> [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ConvertTo-CamelCase [-Value] <String> [-PreserveAcronyms] [-ProgressAction <ActionPreference>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
 The ConvertTo-CamelCase function takes a string input and converts it to camelCase format.
-It splits the input on spaces, underscores, hyphens, and PascalCase boundaries, then
+It splits the input on spaces, underscores, hyphens, case changes (including letters
+outside A-Z, such as 'Ä') and a digit followed by a capital ('Version2Update'), then
 lowercases the first word and PascalCases subsequent words.
 This is useful for formatting
 property names, variable names, or other identifiers that need to follow camelCase naming
@@ -68,6 +70,18 @@ ConvertTo-CamelCase -Value ""
 Returns: "" (empty string unchanged)
 ```
 
+### EXAMPLE 8
+```
+ConvertTo-CamelCase -Value 'Version2Update'
+Returns: "version2Update"
+```
+
+### EXAMPLE 9
+```
+ConvertTo-CamelCase -Value 'user 2FA code' -PreserveAcronyms
+Returns: "user2FACode"
+```
+
 ## PARAMETERS
 
 ### -Value
@@ -76,17 +90,32 @@ Accepts pipeline input and string arrays.
 If the value is null or empty, the function returns the original value unchanged.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
+Position: 1
 Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: True (ByPropertyName, ByValue)
+Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
+```
+
+### -PreserveAcronyms
+Keeps words written in capitals (at least two capital letters, such as 'XML', 'FA' or
+'HTML5') as they are instead of capitalising only their first letter: 'parse_XML_file'
+becomes 'parseXMLFile' instead of 'parseXmlFile'.
+The first word is always lower case.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
@@ -94,18 +123,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -123,7 +148,6 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
 This function is part of the tcs.core module and is commonly used for formatting
 strings to match JavaScript or JSON property naming conventions.

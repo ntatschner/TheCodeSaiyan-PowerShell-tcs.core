@@ -93,20 +93,20 @@ $dynParam = New-DynamicParameter -Name "CountryCode" -ParameterType ([string]) -
 function Test-Function {
     [CmdletBinding()]
     param()
-    
-    DynamicParam {
+```
+
+DynamicParam {
         $paramDict = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-        $dynParam = New-DynamicParameter -Name "DynamicParam" -ParameterType ([string]) -Mandatory
+        $dynParam = New-DynamicParameter -Name "DynamicParam" -ParameterType (\[string\]) -Mandatory
         $paramDict.Add($dynParam.Name, $dynParam.Parameter)
         return $paramDict
     }
-    
+
     process {
-        $dynamicValue = $PSBoundParameters['DynamicParam']
+        $dynamicValue = $PSBoundParameters\['DynamicParam'\]
         Write-Output "Dynamic parameter value: $dynamicValue"
     }
 }
-```
 
 ### EXAMPLE 5
 ```
@@ -140,18 +140,14 @@ This will be the parameter name that users specify
 when calling the function.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position:Named
+Position: Named
 Default value: None
-Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: True (ByPropertyName, ByValue)
-Accept wildcard characters: False
+Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
 ```
 
@@ -160,18 +156,14 @@ The .NET type of the dynamic parameter (e.g., \[string\], \[int\], \[switch\], e
 This determines what kind of values the parameter will accept.
 
 ```yaml
-Type:Type
-Parameter Sets:   (All)
+Type: Type
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -180,18 +172,14 @@ The parameter set name that this dynamic parameter belongs to.
 Defaults to '__AllParameterSets' which means the parameter is available in all parameter sets.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: __AllParameterSets
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -199,18 +187,14 @@ Accept wildcard characters: False
 Switch parameter that makes the dynamic parameter mandatory when specified.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -219,19 +203,14 @@ The position of the parameter in the parameter list.
 Allows for positional parameter usage.
 
 ```yaml
-Type:
-Int32
-Parameter Sets:   (All)
+Type: Int32
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: 0
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -239,18 +218,14 @@ Accept wildcard characters: False
 Switch parameter that enables the parameter to accept values from pipeline input by property name.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -258,18 +233,14 @@ Accept wildcard characters: False
 The help message displayed to users when they request help for this parameter.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -283,15 +254,11 @@ This parameter is part of the 'ValidateSet' parameter set.
 Type: String[]
 Parameter Sets: ValidateSet
 Aliases:
+
 Required: True
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -300,18 +267,14 @@ When using ValidateSet, determines whether case sensitivity is enforced for vali
 Defaults to $true (case-insensitive validation).
 
 ```yaml
-Type:Boolean
+Type: Boolean
 Parameter Sets: ValidateSet
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: True
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -322,18 +285,14 @@ values and $false for invalid ones.
 This parameter is part of the 'ValidateScript' parameter set.
 
 ```yaml
-Type:ScriptBlock
+Type: ScriptBlock
 Parameter Sets: ValidateScript
 Aliases:
+
 Required: True
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -341,18 +300,14 @@ Accept wildcard characters: False
 Switch parameter that adds a ValidateNotNullOrEmpty attribute to the dynamic parameter.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -361,18 +316,14 @@ A regex pattern string that adds a ValidatePattern attribute to the dynamic para
 This parameter is part of the 'ValidatePattern' parameter set.
 
 ```yaml
-Type:String
+Type: String
 Parameter Sets: ValidatePattern
 Aliases:
+
 Required: True
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -384,15 +335,11 @@ This parameter is part of the 'ValidateRange' parameter set.
 Type: Int32[]
 Parameter Sets: ValidateRange
 Aliases:
+
 Required: True
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -404,15 +351,11 @@ This parameter is part of the 'ValidateLength' parameter set.
 Type: Int32[]
 Parameter Sets: ValidateLength
 Aliases:
+
 Required: True
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -421,17 +364,13 @@ An array of alias names for the dynamic parameter.
 
 ```yaml
 Type: String[]
-Parameter Sets:   (All)
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -439,18 +378,14 @@ Accept wildcard characters: False
 Switch parameter that enables the dynamic parameter to accept values from pipeline input.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -458,18 +393,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -488,7 +419,6 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
 This function is part of the tcs.core module and is designed to simplify the creation
 of dynamic parameters in advanced PowerShell functions.

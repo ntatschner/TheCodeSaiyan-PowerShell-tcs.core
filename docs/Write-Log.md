@@ -14,14 +14,14 @@ Writes a structured log message to the console and/or a log file.
 
 ```
 Write-Log [-Message] <String> [-Level <String>] [-LogPath <String>] [-Component <String>] [-NoConsole]
- [-DateFormat <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [-DateFormat <String>] [-UseUtc] [-PassThru] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
 The Write-Log function provides structured logging with severity levels, timestamps,
 and optional component prefixes.
-Messages can be written to the console with color-coded
-output, to a log file, or both.
+Messages can be written to the console, to a log file,
+or both.
 The function supports pipeline input for batch logging
 and uses appropriate PowerShell output streams for Debug and Verbose levels.
 
@@ -39,8 +39,8 @@ Writes an Info-level message to the console with a timestamp.
 Write-Log -Message "Connection failed" -Level Error -Component "Network" -LogPath "C:\Logs\app.log"
 ```
 
-Writes an Error-level message with a component prefix to both the console (in red) and
-the specified log file.
+Writes an Error-level message with a component prefix to the error stream and to the
+specified log file.
 
 ### EXAMPLE 3
 ```
@@ -57,17 +57,14 @@ Accepts pipeline input, allowing multiple messages to be
 logged in sequence.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: True
-Position: 1Default
+Position: 1
 Default value: None
-Default value: None
-Accept pipeline input: False
-input:False
-Accept pipeline input: True (ByPropertyName, ByValue)
-Accept wildcard characters: False
+Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
 ```
 
@@ -76,22 +73,20 @@ The severity level of the log message.
 Valid values are 'Info', 'Warning', 'Error',
 'Debug', and 'Verbose'.
 Defaults to 'Info'.
-Debug and Verbose levels use their
-respective PowerShell output streams (Write-Debug, Write-Verbose) for console output.
+Info is written to the host in colour; the
+other levels use their PowerShell streams: Warning uses Write-Warning, Error uses
+Write-Error (a non-terminating error, so -ErrorAction and $ErrorActionPreference apply),
+Debug uses Write-Debug and Verbose uses Write-Verbose.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: Info
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -101,18 +96,14 @@ If the file or its parent
 directory does not exist, they will be created automatically.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -121,18 +112,14 @@ An optional component or module name prefix included in the formatted log messag
 When specified, the message is formatted as \[$timestamp\]\[$Level\]\[$Component\] $Message.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -142,18 +129,14 @@ Requires
 LogPath to be specified for any output to occur.
 
 ```yaml
-Type:Switch
-Parameter Sets:   (All)
+Type: SwitchParameter
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: False
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -163,17 +146,44 @@ Defaults to 'yyyy-MM-dd HH:mm:ss'.
 Accepts any valid .NET DateTime format string.
 
 ```yaml
-Type:String
-Parameter Sets:   (All)
+Type: String
+Parameter Sets: (All)
 Aliases:
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
-Default value: Yyyy-MM-dd
-HH:mm:ssAcceptpipeline
+Position: Named
+Default value: Yyyy-MM-dd HH:mm:ss
 Accept pipeline input: False
 Accept wildcard characters: False
+```
+
+### -UseUtc
+Writes timestamps in UTC instead of local time.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -PassThru
+Returns the formatted log line.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
@@ -181,18 +191,14 @@ Accept wildcard characters: False
 {{ Fill ProgressAction Description }}
 
 ```yaml
-Type:ActionPreference
-Parameter Sets:   (All)
-Aliases:proga
+Type: ActionPreference
+Parameter Sets: (All)
+Aliases: proga
+
 Required: False
-Position:Named
-Default value: None
-Default value: None
+Position: Named
 Default value: None
 Accept pipeline input: False
-input:False
-Accept pipeline input: False
-Accept wildcard characters: False
 Accept wildcard characters: False
 ```
 
@@ -205,15 +211,19 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ### You can pipe one or more strings to Write-Log.
 ## OUTPUTS
 
-### None
-### This function does not produce pipeline output.
+### None, or System.String when PassThru is specified.
 ## NOTES
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
-Version: 0.2.0
 
-This function is part of the tcs.core module and provides a lightweight structured
-logging mechanism suitable for scripts and module development.
+File writes append with shared read/write access, so several processes can log to the
+same file.
+Files are written as UTF-8 without a byte order mark.
+The file is written
+before the console output.
+
+Since tcs.core 0.4.0, Warning and Error levels use the warning and error streams instead
+of coloured host text, so they can be captured, redirected and suppressed.
 
 ## RELATED LINKS
 
