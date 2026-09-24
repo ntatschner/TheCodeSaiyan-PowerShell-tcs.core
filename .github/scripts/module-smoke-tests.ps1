@@ -2,12 +2,17 @@ param()
 
 $moduleName = 'tcs.core'
 $repoRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
-$moduleDirectory = Join-Path -Path $repoRoot -ChildPath 'modules/tcs.core'
-$moduleManifest = Join-Path -Path $moduleDirectory -ChildPath 'tcs.core.psd1'
+$moduleDirectory = Join-Path -Path (Join-Path -Path $repoRoot -ChildPath 'modules') -ChildPath $moduleName
+$moduleManifest = Join-Path -Path $moduleDirectory -ChildPath "$moduleName.psd1"
 
 if (-not (Test-Path -Path $moduleManifest)) {
     throw "Module manifest not found at path: $moduleManifest"
 }
+
+# Keep the smoke test offline and away from the real user profile
+$env:TCS_SKIP_UPDATE_CHECK = '1'
+$env:TCS_TELEMETRY_OPTOUT = '1'
+$env:TCS_CONFIG_ROOT = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "tcs-smoke-$([guid]::NewGuid().ToString('N'))"
 
 try {
     Write-Host "Importing $moduleName from $moduleManifest" -ForegroundColor Cyan
@@ -51,17 +56,28 @@ try {
 
     $secret = 'TestSecret123'
     $encrypted = Protect-ConfigValue -Value $secret
+    if ($encrypted -notmatch '^tcs:v1:') { throw "Protect-ConfigValue returned an unexpected format: '$encrypted'." }
     $decrypted = Unprotect-ConfigValue -EncryptedValue $encrypted
     if ($decrypted -ne $secret) { throw "Protect/Unprotect-ConfigValue roundtrip failed: got '$decrypted'." }
 
-    $exported = (Get-Module $moduleName).ExportedFunctions.Keys
-    $expectedCount = 13
-    if ($exported.Count -ne $expectedCount) {
-        throw "Expected $expectedCount exported functions, got $($exported.Count): $($exported -join ', ')"
+    $config = Get-ModuleConfig -CommandPath (Join-Path $moduleDirectory "$moduleName.psm1")
+    if ($config.ModuleName -ne $moduleName) { throw "Get-ModuleConfig returned module '$($config.ModuleName)'." }
+
+    $status = Get-ModuleStatus -ModuleName $moduleName -ModulePath $moduleDirectory
+    if ($status.Source -ne 'Skipped') { throw "Get-ModuleStatus should honour TCS_SKIP_UPDATE_CHECK (source '$($status.Source)')." }
+
+    Invoke-TelemetryCollection -ModuleName $moduleName -ExecutionID ([guid]::NewGuid().ToString()) -Stage 'Module-Load'
+
+    $exported = @((Get-Module $moduleName).ExportedFunctions.Keys)
+    $expected = @((Import-PowerShellDataFile -Path $moduleManifest).FunctionsToExport)
+    $missing = $expected | Where-Object { $_ -notin $exported }
+    if ($missing -or $exported.Count -ne $expected.Count) {
+        throw "Exported functions do not match the manifest. Expected $($expected.Count), got $($exported.Count): $($exported -join ', ')"
     }
 
     Write-Host 'All smoke tests passed successfully.' -ForegroundColor Green
 }
 finally {
     Remove-Module -Name $moduleName -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $env:TCS_CONFIG_ROOT -Recurse -Force -ErrorAction SilentlyContinue
 }
