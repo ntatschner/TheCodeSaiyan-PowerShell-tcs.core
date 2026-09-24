@@ -21,7 +21,8 @@
     only; the other settings in the file are still used.
 
     The returned hashtable also contains ModuleName, ModulePath, ModuleVersion,
-    ModuleConfigPath and ModuleConfigFilePath.
+    ModuleConfigPath and ModuleConfigFilePath. The telemetry API key, if one is set, is shown
+    as '********'.
 
 .PARAMETER CommandPath
     The path of the calling script or module file, normally $PSCommandPath. When omitted, the
@@ -121,5 +122,6 @@ function Get-ModuleConfig {
     $config['ModuleConfigFilePath'] = $moduleConfigFilePath
 
     $script:ModuleConfigCache[$moduleName] = $config
-    return $config
+    # The session cache keeps the stored API key for telemetry; callers only see it masked
+    return (Get-MaskedModuleConfig -Config $config)
 }

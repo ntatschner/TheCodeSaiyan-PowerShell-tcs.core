@@ -11,6 +11,78 @@ $script:TelemetryTimers = @{}
 $script:TelemetryHttpClient = $null
 $script:TelemetryInstallationId = $null
 
+# Settings read from disk for modules that have not called Get-ModuleConfig in this session
+$script:TelemetryConfigCache = @{}
+
+function Get-TelemetryModuleConfig {
+    <#
+    .SYNOPSIS
+        Returns the settings that decide whether and where a module sends telemetry.
+
+    .DESCRIPTION
+        Uses the session configuration loaded by Get-ModuleConfig when there is one. Otherwise
+        reads the module's settings file (<config root>/<ModuleName>/Module.Config.json) over the
+        tcs.core defaults, so a module's Telemetry = $false is honoured even when the module
+        never called Get-ModuleConfig. The module path is not needed.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory)]
+        [string]$ModuleName
+    )
+
+    $config = $script:ModuleConfigCache[$ModuleName]
+    if ($config) {
+        return $config
+    }
+    if ($script:TelemetryConfigCache.ContainsKey($ModuleName)) {
+        return $script:TelemetryConfigCache[$ModuleName]
+    }
+
+    $config = Get-DefaultModuleConfig
+    if (Test-ModuleNameValid -Name $ModuleName) {
+        $configFile = Join-Path -Path (Join-Path -Path (Get-ModuleConfigRoot) -ChildPath $ModuleName) -ChildPath 'Module.Config.json'
+        if (Test-Path -LiteralPath $configFile) {
+            try {
+                $stored = Read-JsonFileAsHashtable -Path $configFile
+                foreach ($key in $stored.Keys) {
+                    $config[$key] = ConvertTo-ConfigValueType -Value $stored[$key] -DefaultValue $config[$key] -Key $key
+                }
+            }
+            catch {
+                Write-Verbose "Could not read '$configFile' for telemetry settings: $($_.Exception.Message)"
+            }
+        }
+    }
+
+    if ($script:TelemetryConfigCache.Count -gt 100) {
+        $script:TelemetryConfigCache.Clear()
+    }
+    $script:TelemetryConfigCache[$ModuleName] = $config
+    return $config
+}
+
+function Resolve-TelemetryApiKey {
+    <#
+    .SYNOPSIS
+        Returns the telemetry API key in plain text. Values stored with Protect-ConfigValue
+        ('tcs:v1:...') are decrypted; plain-text values written by tcs.core 0.3.0 are used as they are.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrEmpty($Value) -or -not $Value.StartsWith("$($script:ProtectedValuePrefix):")) {
+        return $Value
+    }
+    return (Unprotect-ConfigValue -EncryptedValue $Value -ErrorAction Stop)
+}
+
 function Test-TelemetryOptOut {
     [CmdletBinding()]
     [OutputType([bool])]

@@ -16,7 +16,9 @@
 
     Nothing is sent when:
       - the TCS_TELEMETRY_OPTOUT environment variable is 1, true or yes;
-      - the module's Telemetry setting is $false (Set-ModuleConfig -Telemetry $false);
+      - the module's Telemetry setting is $false (Set-ModuleConfig -Telemetry $false). The
+        setting is read from the module's settings file even if the module has not called
+        Get-ModuleConfig in this session;
       - no endpoint is configured (-URI, TCS_TELEMETRY_URI, or the TelemetryUri setting);
       - the endpoint is not HTTPS (http://localhost is allowed for testing).
 
@@ -55,7 +57,8 @@
     Overrides the ingestion endpoint, e.g. https://telemetry.example.com/ingest/powershell.
 
 .PARAMETER ApiKey
-    Overrides the API key sent in the X-API-Key header.
+    Overrides the API key sent in the X-API-Key header. A value protected with
+    Protect-ConfigValue is decrypted before it is sent.
 
 .PARAMETER Tags
     Extra low-cardinality tags to send with the event.
@@ -137,10 +140,7 @@ function Invoke-TelemetryCollection {
             return
         }
 
-        $config = $script:ModuleConfigCache[$ModuleName]
-        if (-not $config) {
-            $config = Get-DefaultModuleConfig
-        }
+        $config = Get-TelemetryModuleConfig -ModuleName $ModuleName
         if ($config['Telemetry'] -eq $false) {
             return
         }
@@ -182,6 +182,8 @@ function Invoke-TelemetryCollection {
         $key = $ApiKey
         if ([string]::IsNullOrEmpty($key)) { $key = $env:TCS_TELEMETRY_APIKEY }
         if ([string]::IsNullOrEmpty($key)) { $key = [string]$config['TelemetryApiKey'] }
+        # Keys saved by Set-ModuleConfig are protected; decrypt only now, just before sending
+        $key = Resolve-TelemetryApiKey -Value $key
 
         $errorType = $null
         if ($Failed -or $Exception) {

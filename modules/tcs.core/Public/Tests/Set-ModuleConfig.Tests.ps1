@@ -135,3 +135,38 @@ Describe 'Set-ModuleConfig' {
         Set-ModuleConfig -ModuleName 'tcs.core' -Reset
     }
 }
+
+Describe 'Set-ModuleConfig telemetry API key' {
+    BeforeEach {
+        $configFile = Join-Path -Path $env:TCS_CONFIG_ROOT -ChildPath 'tcs.keytest/Module.Config.json'
+        if (Test-Path -Path $configFile) { Remove-Item -Path $configFile -Force }
+    }
+
+    It 'Stores the key protected, never in plain text' {
+        Set-ModuleConfig -ModuleName 'tcs.keytest' -TelemetryApiKey 'SECRET123'
+        $raw = Get-Content -Path $configFile -Raw
+        $raw | Should -Not -Match 'SECRET123'
+        $stored = ($raw | ConvertFrom-Json).TelemetryApiKey
+        $stored | Should -Match '^tcs:v1:'
+        Unprotect-ConfigValue -EncryptedValue $stored | Should -BeExactly 'SECRET123'
+    }
+
+    It 'Masks the key in -PassThru output' {
+        $result = Set-ModuleConfig -ModuleName 'tcs.keytest' -TelemetryApiKey 'SECRET123' -PassThru
+        $result.TelemetryApiKey | Should -Be '********'
+        ($result | Out-String) | Should -Not -Match 'SECRET123'
+    }
+
+    It 'Protects a plain-text key left by an earlier version when saving' {
+        $null = New-Item -Path (Split-Path $configFile) -ItemType Directory -Force
+        '{ "TelemetryApiKey": "OLDPLAIN" }' | Set-Content -Path $configFile
+        Set-ModuleConfig -ModuleName 'tcs.keytest' -Telemetry $true
+        (Get-Content -Path $configFile -Raw) | Should -Not -Match 'OLDPLAIN'
+    }
+
+    It 'Clears the key with an empty string' {
+        Set-ModuleConfig -ModuleName 'tcs.keytest' -TelemetryApiKey 'SECRET123'
+        Set-ModuleConfig -ModuleName 'tcs.keytest' -TelemetryApiKey ''
+        (Get-Content -Path $configFile -Raw | ConvertFrom-Json).TelemetryApiKey | Should -BeExactly ''
+    }
+}

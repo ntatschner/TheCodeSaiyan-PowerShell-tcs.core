@@ -28,7 +28,9 @@
     The HTTPS ingestion endpoint for telemetry. An empty string clears it.
 
 .PARAMETER TelemetryApiKey
-    The API key sent to the telemetry endpoint in the X-API-Key header.
+    The API key sent to the telemetry endpoint in the X-API-Key header. It is stored encrypted
+    with Protect-ConfigValue (current user) and shown as '********' in -PassThru and
+    Get-ModuleConfig output. An empty string clears it.
 
 .PARAMETER Setting
     A hashtable of settings to change, for settings that have no parameter of their own (for
@@ -51,7 +53,7 @@
 
 .OUTPUTS
     System.Collections.Hashtable
-    When PassThru is specified.
+    When PassThru is specified. The telemetry API key is masked.
 
 .EXAMPLE
     Set-ModuleConfig -ModuleName 'tcs.core' -UpdateWarning $false
@@ -170,6 +172,11 @@ function Set-ModuleConfig {
     }
 
     if ($PSCmdlet.ShouldProcess($ModuleConfigFilePath, 'Update module settings')) {
+        # Never store the telemetry API key in plain text (a plain key saved by 0.3.0 is protected now)
+        $apiKey = [string]$settings['TelemetryApiKey']
+        if (-not [string]::IsNullOrEmpty($apiKey) -and -not $apiKey.StartsWith('tcs:v1:')) {
+            $settings['TelemetryApiKey'] = Protect-ConfigValue -Value $apiKey
+        }
         Write-JsonFile -Path $ModuleConfigFilePath -Data $settings
 
         # Keep the current session in step with the file
@@ -178,9 +185,10 @@ function Set-ModuleConfig {
                 $script:ModuleConfigCache[$ModuleName][$key] = $settings[$key]
             }
         }
+        $script:TelemetryConfigCache.Remove($ModuleName)
     }
 
     if ($PassThru) {
-        $settings
+        Get-MaskedModuleConfig -Config $settings
     }
 }

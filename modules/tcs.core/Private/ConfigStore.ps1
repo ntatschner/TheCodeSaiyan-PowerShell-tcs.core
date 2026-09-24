@@ -181,6 +181,28 @@ function ConvertTo-ConfigValueType {
     return $result
 }
 
+function Get-MaskedModuleConfig {
+    <#
+    .SYNOPSIS
+        Returns a copy of a settings hashtable with secrets (the telemetry API key) masked, for output.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory)]
+        [hashtable]$Config
+    )
+
+    $copy = @{}
+    foreach ($key in $Config.Keys) {
+        $copy[$key] = $Config[$key]
+    }
+    if (-not [string]::IsNullOrEmpty([string]$copy['TelemetryApiKey'])) {
+        $copy['TelemetryApiKey'] = '********'
+    }
+    return $copy
+}
+
 function Test-ModuleNameValid {
     <#
     .SYNOPSIS
