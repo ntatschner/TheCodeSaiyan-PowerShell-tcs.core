@@ -92,7 +92,8 @@ Describe 'Invoke-TcsCommand' {
     }
 
     It 'Marks the run failed when the command writes a non-terminating error, and passes the error on' {
-        $output = Get-NonTerminating -ErrorVariable errs 2>$null
+        # -ErrorAction Continue: the result must not depend on the caller's preference (GitHub's pwsh shell sets Stop)
+        $output = Get-NonTerminating -ErrorAction Continue -ErrorVariable errs 2>$null
         $output | Should -Be 'after'
         $errs.Count | Should -Be 1
         Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 1 -Exactly -ParameterFilter {
@@ -194,7 +195,7 @@ Describe 'Start-TcsTelemetry and Complete-TcsTelemetry' {
     }
 
     It 'Marks a pipeline run failed when one item wrote an error' {
-        $null = 'a', 'bad', 'c' | Get-Pipeline 2>$null
+        $null = 'a', 'bad', 'c' | Get-Pipeline -ErrorAction Continue 2>$null
         Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 1 -Exactly -ParameterFilter { ($Body | ConvertFrom-Json).success -eq $false }
     }
 

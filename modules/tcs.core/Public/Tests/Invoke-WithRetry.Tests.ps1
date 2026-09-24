@@ -122,6 +122,8 @@ Describe 'Invoke-WithRetry output and HTTP handling' {
     }
 
     It 'Does not retry non-terminating errors by default' {
+        # The script block runs in this scope, so pin the preference (GitHub's pwsh shell sets Stop)
+        $ErrorActionPreference = 'Continue'
         $script:tries = 0
         $null = Invoke-WithRetry -DelaySeconds 0 -ScriptBlock { $script:tries++; Write-Error 'not terminating' } 2>$null
         $script:tries | Should -Be 1
