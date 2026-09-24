@@ -119,6 +119,12 @@
     This function is part of the tcs.core module and provides robust retry logic
     suitable for network operations, transient fault handling, and resilient scripting.
 
+    With -RetryOnNonTerminatingError, lines that native programs write to stderr are passed on
+    through the error stream and never fail an attempt. On Windows PowerShell 5.1, a native
+    program that writes to stderr while $ErrorActionPreference is 'Stop' raises a
+    NativeCommandError, as it does whenever its errors are redirected; use -ErrorAction Continue
+    around such calls.
+
 .LINK
     https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/
 #>

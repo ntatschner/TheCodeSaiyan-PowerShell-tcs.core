@@ -143,6 +143,8 @@ Describe 'Invoke-WithRetry output and HTTP handling' {
     }
 
     It 'Does not count native stderr lines as errors with -RetryOnNonTerminatingError' {
+        # Windows PowerShell 5.1 turns redirected stderr into a terminating error under 'Stop'
+        $ErrorActionPreference = 'Continue'
         $shell = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
         $script:tries = 0
         $output = @(Invoke-WithRetry -DelaySeconds 0 -RetryOnNonTerminatingError -ScriptBlock {
