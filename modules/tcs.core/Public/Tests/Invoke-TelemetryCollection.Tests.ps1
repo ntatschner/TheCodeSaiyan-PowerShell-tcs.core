@@ -139,3 +139,29 @@ Describe 'Invoke-TelemetryCollection' {
         InModuleScope tcs.core { Get-TelemetryInstallationId } | Should -Be $first
     }
 }
+
+Describe 'Invoke-TelemetryCollection deprecations' {
+    BeforeEach {
+        InModuleScope tcs.core { $script:DeprecationWarningsShown.Clear() }
+    }
+
+    It 'Warns once per session for <Name>, and keeps working' -ForEach @(
+        @{ Name = '-ModulePath'; Arguments = @{ ModulePath = 'x'; Stage = 'Module-Load' }; Pattern = '-ModulePath is deprecated' }
+        @{ Name = '-Minimal'; Arguments = @{ Minimal = $true; Stage = 'Module-Load' }; Pattern = '-Minimal is deprecated' }
+        @{ Name = 'In-Progress'; Arguments = @{ Stage = 'In-Progress' }; Pattern = "'In-Progress' is deprecated" }
+    ) {
+        $warnings = $null
+        Invoke-TelemetryCollection -ExecutionID 'd1' @Arguments -WarningVariable warnings -WarningAction SilentlyContinue
+        Invoke-TelemetryCollection -ExecutionID 'd2' @Arguments -WarningVariable +warnings -WarningAction SilentlyContinue
+        @($warnings).Count | Should -Be 1
+        [string]$warnings[0] | Should -Match $Pattern
+        [string]$warnings[0] | Should -Match '1\.0'
+    }
+
+    It 'Does not warn for current usage' {
+        $warnings = $null
+        Invoke-TelemetryCollection -ExecutionID 'd3' -Stage Start -WarningVariable warnings -WarningAction SilentlyContinue
+        Invoke-TelemetryCollection -ExecutionID 'd3' -Stage End -WarningVariable +warnings -WarningAction SilentlyContinue
+        @($warnings).Count | Should -Be 0
+    }
+}

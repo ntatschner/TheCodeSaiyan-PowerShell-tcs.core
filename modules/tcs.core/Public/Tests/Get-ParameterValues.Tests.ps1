@@ -23,3 +23,15 @@ Describe 'Get-ParameterValues' {
         @((Get-ParameterValues -PSBoundParametersHash $bound -Include 'C').Keys) | Should -Be @('C')
     }
 }
+
+Describe 'Get-ParameterValues deprecation' {
+    It 'Warns once per session and keeps working' {
+        InModuleScope tcs.core { $script:DeprecationWarningsShown.Clear() }
+        $warnings = $null
+        $first = Get-ParameterValues -PSBoundParametersHash @{ A = 1 } -WarningVariable warnings -WarningAction SilentlyContinue
+        $null = Get-ParameterValues -PSBoundParametersHash @{ A = 1 } -WarningVariable +warnings -WarningAction SilentlyContinue
+        $first.A | Should -Be 1
+        @($warnings).Count | Should -Be 1
+        [string]$warnings[0] | Should -Match 'Get-ParameterValues is deprecated and will be removed in tcs.core 1.0'
+    }
+}

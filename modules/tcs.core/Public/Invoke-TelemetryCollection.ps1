@@ -24,7 +24,7 @@
 
     Stages:
       Start        starts the timer for ExecutionID (nothing is sent)
-      In-Progress  no action (kept for compatibility)
+      In-Progress  no action; deprecated (warns once per session), removal planned in 1.0
       End          stops the timer and sends the event
       Module-Load  sends an event with a duration of 0
 
@@ -64,10 +64,12 @@
     Extra low-cardinality tags to send with the event.
 
 .PARAMETER ModulePath
-    Deprecated and ignored. Paths are no longer sent because they can contain user names.
+    Deprecated and ignored (warns once per session); removal planned in tcs.core 1.0. Paths
+    are no longer sent because they can contain user names.
 
 .PARAMETER Minimal
-    Deprecated and ignored. All telemetry is now minimal.
+    Deprecated and ignored (warns once per session); removal planned in tcs.core 1.0. All
+    telemetry is now minimal.
 
 .INPUTS
     None
@@ -93,6 +95,12 @@
 .NOTES
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
+
+    New commands should use Invoke-TcsCommand, or Start-TcsTelemetry and
+    Complete-TcsTelemetry, instead of calling this function directly.
+
+.LINK
+    Invoke-TcsCommand
 #>
 function Invoke-TelemetryCollection {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ModulePath',
@@ -136,6 +144,16 @@ function Invoke-TelemetryCollection {
 
     # Telemetry must never break the caller
     try {
+        if ($PSBoundParameters.ContainsKey('ModulePath')) {
+            Write-DeprecationWarning -Feature 'Invoke-TelemetryCollection -ModulePath' -Message 'It is ignored; remove it.'
+        }
+        if ($PSBoundParameters.ContainsKey('Minimal')) {
+            Write-DeprecationWarning -Feature 'Invoke-TelemetryCollection -Minimal' -Message 'It is ignored; remove it.'
+        }
+        if ($Stage -eq 'In-Progress') {
+            Write-DeprecationWarning -Feature "Invoke-TelemetryCollection -Stage 'In-Progress'" -Message 'It does nothing; remove the call.'
+        }
+
         if (Test-TelemetryOptOut) {
             return
         }

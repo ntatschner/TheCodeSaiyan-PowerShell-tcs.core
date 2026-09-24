@@ -8,6 +8,11 @@
     and system parameters. This is useful for configuration management and parameter
     processing where only user-specified values are needed.
 
+    DEPRECATED: Get-ParameterValues writes a deprecation warning (once per session) and is
+    planned for removal in tcs.core 1.0. Use $PSBoundParameters directly, removing the keys
+    you do not want, for example:
+    $params = @{} + $PSBoundParameters; $params.Remove('Verbose')
+
 .PARAMETER PSBoundParametersHash
     The PSBoundParameters hashtable from a PowerShell function, containing all parameters
     that were explicitly provided by the caller.
@@ -67,6 +72,8 @@ function Get-ParameterValues {
         [string[]]$Exclude,
         [string[]]$Include
     )
+    Write-DeprecationWarning -Feature 'Get-ParameterValues' -Message 'Use $PSBoundParameters directly.'
+
     # Get all the PSBoundParameters and set the values as a hashtable
     $DefaultExclude = @('Verbose', 'Debug', 'ErrorAction', 'WarningAction', 'InformationAction', 'ProgressAction', 'ErrorVariable', 'WarningVariable', 'InformationVariable', 'OutVariable', 'OutBuffer', 'PipelineVariable', 'WhatIf', 'Confirm')
     if ($null -eq $Exclude) {

@@ -9,6 +9,10 @@
     with data from ConvertFrom-Json or other cmdlets that produce PSCustomObjects and you need
     a hashtable for splatting, comparison, or other operations.
 
+    DEPRECATED: ConvertTo-HashTable writes a deprecation warning (once per session) and is
+    planned for removal in tcs.core 1.0. On PowerShell 7 use ConvertFrom-Json -AsHashtable;
+    for other objects build the hashtable from $object.PSObject.Properties.
+
 .PARAMETER InputObject
     The PSObject to convert to a hashtable. Accepts pipeline input, allowing multiple objects
     to be converted in sequence.
@@ -77,6 +81,10 @@ function ConvertTo-HashTable {
         [Parameter(HelpMessage = "Return an ordered dictionary that keeps property order.")]
         [switch]$Ordered
     )
+
+    begin {
+        Write-DeprecationWarning -Feature 'ConvertTo-HashTable' -Message 'On PowerShell 7 use ConvertFrom-Json -AsHashtable.'
+    }
 
     process {
         $hashtable = if ($Ordered) { [ordered]@{} } else { @{} }
