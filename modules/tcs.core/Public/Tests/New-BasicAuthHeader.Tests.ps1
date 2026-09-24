@@ -1,4 +1,8 @@
-﻿BeforeAll {
+﻿[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '',
+    Justification = 'Test values only.')]
+param()
+
+BeforeAll {
     $env:TCS_CONFIG_ROOT = Join-Path -Path $TestDrive -ChildPath 'config'
     $env:TCS_SKIP_UPDATE_CHECK = '1'
     $env:TCS_TELEMETRY_OPTOUT = '1'
