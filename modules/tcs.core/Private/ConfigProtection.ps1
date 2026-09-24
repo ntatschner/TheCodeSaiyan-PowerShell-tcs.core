@@ -87,23 +87,26 @@ function Get-ProtectionKey {
             $keyDirectory = Split-Path -Path $keyPath -Parent
             if (-not (Test-Path -LiteralPath $keyDirectory)) {
                 $null = New-Item -Path $keyDirectory -ItemType Directory -Force -ErrorAction Stop
-                if ($Scope -eq 'CurrentUser') {
-                    & chmod 700 $keyDirectory
+            }
+            $setPermissions = -not (Test-IsWindowsPlatform)
+            if ($setPermissions -and $Scope -eq 'CurrentUser') {
+                # Also when the folder already exists (it holds the settings files too)
+                & chmod 700 $keyDirectory
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to set permissions on '$keyDirectory'."
                 }
             }
 
             # Create the empty file and restrict it before any key material is written
             $null = New-Item -Path $keyPath -ItemType File -Force -ErrorAction Stop
-            if ($Scope -eq 'CurrentUser') {
-                & chmod 600 $keyPath
-            }
-            else {
+            if ($setPermissions) {
                 # LocalMachine semantics: any local user may decrypt, only root may change the key
-                & chmod 644 $keyPath
-            }
-            if ($LASTEXITCODE -ne 0) {
-                Remove-Item -LiteralPath $keyPath -Force -ErrorAction SilentlyContinue
-                throw "Failed to set permissions on '$keyPath'."
+                $fileMode = if ($Scope -eq 'CurrentUser') { '600' } else { '644' }
+                & chmod $fileMode $keyPath
+                if ($LASTEXITCODE -ne 0) {
+                    Remove-Item -LiteralPath $keyPath -Force -ErrorAction SilentlyContinue
+                    throw "Failed to set permissions on '$keyPath'."
+                }
             }
             [System.IO.File]::WriteAllText($keyPath, [Convert]::ToBase64String($key))
         }
