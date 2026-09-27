@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Invoke-TcsCommand` writes the body's errors and warnings again from itself: `Write-Error`
   IDs end in `,Invoke-TcsCommand`, and the command's `-ErrorVariable` (with
   `-ErrorAction SilentlyContinue`), `-WarningVariable` and `-InformationVariable` do not collect
-  what the body writes. Its help, the about topic and the README now describe this and show the
+  what the body writes; an error raised with `$PSCmdlet.ThrowTerminatingError()` inside it is
+  recorded as a successful run. Its help, the about topic and the README now describe this and show the
   inline `Start-TcsTelemetry` / `Complete-TcsTelemetry` pattern (with the pipeline variant) for
   commands that write errors, warnings or information.
 

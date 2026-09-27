@@ -24,7 +24,8 @@
     inside it an error written with Write-Error gets the error ID '<Id>,Invoke-TcsCommand'
     instead of '<Id>,<Command>', and the command's -ErrorVariable (with -ErrorAction
     SilentlyContinue), -WarningVariable and -InformationVariable do not collect what the body
-    writes. For a command that writes errors, warnings or information records its callers may
+    writes. An error raised with $PSCmdlet.ThrowTerminatingError() inside the script block
+    reaches the caller, but the run is recorded as successful. For a command that writes errors, warnings or information records its callers may
     capture, record telemetry inline instead, which leaves every stream unchanged:
 
       function Get-Widget {
