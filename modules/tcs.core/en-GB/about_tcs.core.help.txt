@@ -49,6 +49,16 @@ LONG DESCRIPTION
         $PSBoundParameters and $MyInvocation describe the script block: copy
         them to a variable first if the body needs them.
 
+        Invoke-TcsCommand writes the body's errors and warnings again from
+        itself, so Write-Error IDs end in ',Invoke-TcsCommand' and the
+        command's -ErrorVariable (with -ErrorAction SilentlyContinue),
+        -WarningVariable and -InformationVariable do not collect them. An
+        error raised with $PSCmdlet.ThrowTerminatingError() inside it is
+        recorded as a successful run. For a command that writes errors, warnings or information, call
+        Start-TcsTelemetry and complete the token with Complete-TcsTelemetry
+        in a catch block (with -ErrorRecord $_) and a finally block instead;
+        see Get-Help Invoke-TcsCommand -Full.
+
         Invoke-TelemetryCollection still works for existing commands. Its
         -ModulePath, -Minimal and -Stage 'In-Progress' are deprecated.
 

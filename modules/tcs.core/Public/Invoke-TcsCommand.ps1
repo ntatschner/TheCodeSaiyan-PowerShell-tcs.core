@@ -20,6 +20,35 @@
     script block: $PSBoundParameters and $MyInvocation describe the script block, not the
     command. Copy them to a variable before Invoke-TcsCommand if the body needs them.
 
+    Limitation: Invoke-TcsCommand writes the body's errors and warnings again from itself, so
+    inside it an error written with Write-Error gets the error ID '<Id>,Invoke-TcsCommand'
+    instead of '<Id>,<Command>', and the command's -ErrorVariable (with -ErrorAction
+    SilentlyContinue), -WarningVariable and -InformationVariable do not collect what the body
+    writes. An error raised with $PSCmdlet.ThrowTerminatingError() inside the script block
+    reaches the caller, but the run is recorded as successful. For a command that writes errors, warnings or information records its callers may
+    capture, record telemetry inline instead, which leaves every stream unchanged:
+
+      function Get-Widget {
+          [CmdletBinding()]
+          param([string]$Name)
+          $telemetry = Start-TcsTelemetry
+          try {
+              Get-Item -Path $Name
+          }
+          catch {
+              Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
+              throw
+          }
+          finally {
+              Complete-TcsTelemetry -Token $telemetry
+          }
+      }
+
+    Complete-TcsTelemetry does nothing for a token that is already complete. In a pipeline
+    function, start the token in begin, complete it in end, and also complete it in a finally
+    block of process when the item did not finish, because end does not run when a later
+    command stops the pipeline (for example Select-Object -First).
+
     What it does:
       - Writes exactly what the script block outputs, unchanged (collections are not
         unrolled or wrapped), and nothing else.

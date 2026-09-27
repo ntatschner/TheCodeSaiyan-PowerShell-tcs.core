@@ -222,7 +222,7 @@ function Invoke-TelemetryCollection {
             ps_host    = [string]$Host.Name
         }
         if ($Tags) {
-            foreach ($tagKey in $Tags.Keys) {
+            foreach ($tagKey in $Tags.get_Keys()) {
                 $eventTags[[string]$tagKey] = [string]$Tags[$tagKey]
             }
         }

@@ -39,6 +39,15 @@ Describe 'Invoke-TelemetryCollection' {
         }
     }
 
+    It 'Sends a tag named keys' {
+        Invoke-TelemetryCollection -ModuleName 'tcs.x' -ModuleVersion '1.0.0' -CommandName 'Get-X' -ExecutionID 'k1' -Stage Start -URI $uri
+        Invoke-TelemetryCollection -ModuleName 'tcs.x' -ModuleVersion '1.0.0' -CommandName 'Get-X' -ExecutionID 'k1' -Stage End -URI $uri -Tags @{ keys = 'a' }
+
+        Should -Invoke -ModuleName tcs.core Send-TelemetryPayload -Times 1 -Exactly -ParameterFilter {
+            ($Body | ConvertFrom-Json).tags.keys -eq 'a'
+        }
+    }
+
     It 'Sends only the exception type, never the message, user or path' {
         $err = [System.IO.IOException]::new('C:\Users\secret\file.txt')
         Invoke-TelemetryCollection -ModuleName 'tcs.x' -ExecutionID 'e2' -Stage End -Failed $true -Exception $err -URI $uri -ModulePath 'C:\Users\secret'

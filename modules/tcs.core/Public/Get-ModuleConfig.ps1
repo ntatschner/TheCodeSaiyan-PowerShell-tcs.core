@@ -86,14 +86,14 @@ function Get-ModuleConfig {
 
     $defaults = Get-DefaultModuleConfig -ModulePath $modulePath
     $config = @{}
-    foreach ($key in $defaults.Keys) {
+    foreach ($key in $defaults.get_Keys()) {
         $config[$key] = $defaults[$key]
     }
 
     if (Test-Path -LiteralPath $moduleConfigFilePath) {
         try {
             $userConfig = Read-JsonFileAsHashtable -Path $moduleConfigFilePath
-            foreach ($key in $userConfig.Keys) {
+            foreach ($key in $userConfig.get_Keys()) {
                 $config[$key] = ConvertTo-ConfigValueType -Value $userConfig[$key] -DefaultValue $defaults[$key] -Key $key
             }
         }

@@ -91,7 +91,7 @@ function ConvertTo-HashTable {
 
         # A dictionary is already key/value data; its PSObject properties would be Keys, Count, etc.
         $entries = if ($InputObject -is [System.Collections.IDictionary]) {
-            foreach ($key in $InputObject.Keys) { [PSCustomObject]@{ Name = [string]$key; Value = $InputObject[$key] } }
+            foreach ($key in $InputObject.get_Keys()) { [PSCustomObject]@{ Name = [string]$key; Value = $InputObject[$key] } }
         }
         else {
             $InputObject.PSObject.Properties | ForEach-Object { [PSCustomObject]@{ Name = $_.Name; Value = $_.Value } }

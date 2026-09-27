@@ -46,7 +46,7 @@ function Get-TelemetryModuleConfig {
         if (Test-Path -LiteralPath $configFile) {
             try {
                 $stored = Read-JsonFileAsHashtable -Path $configFile
-                foreach ($key in $stored.Keys) {
+                foreach ($key in $stored.get_Keys()) {
                     $config[$key] = ConvertTo-ConfigValueType -Value $stored[$key] -DefaultValue $config[$key] -Key $key
                 }
             }

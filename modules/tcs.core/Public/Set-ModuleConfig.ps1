@@ -141,20 +141,20 @@ function Set-ModuleConfig {
 
     $settings = @{}
     if ($Reset -or -not (Test-Path -LiteralPath $ModuleConfigFilePath)) {
-        foreach ($key in $defaults.Keys) {
+        foreach ($key in $defaults.get_Keys()) {
             $settings[$key] = $defaults[$key]
         }
     }
     else {
         $existing = Read-JsonFileAsHashtable -Path $ModuleConfigFilePath
-        foreach ($key in $existing.Keys) {
+        foreach ($key in $existing.get_Keys()) {
             $settings[$key] = ConvertTo-ConfigValueType -Value $existing[$key] -DefaultValue $defaults[$key] -Key $key
         }
     }
 
     $changes = @{}
     if ($Setting) {
-        foreach ($key in $Setting.Keys) {
+        foreach ($key in $Setting.get_Keys()) {
             $name = [string]$key
             if ([string]::IsNullOrWhiteSpace($name) -or $name -in $script:ReservedConfigKeys) {
                 throw "'$name' cannot be set; it describes the loaded module and is not stored."
@@ -167,7 +167,7 @@ function Set-ModuleConfig {
             $changes[$name] = $PSBoundParameters[$name]
         }
     }
-    foreach ($name in $changes.Keys) {
+    foreach ($name in $changes.get_Keys()) {
         $settings[$name] = $changes[$name]
     }
 
@@ -181,7 +181,7 @@ function Set-ModuleConfig {
 
         # Keep the current session in step with the file
         if ($script:ModuleConfigCache.ContainsKey($ModuleName)) {
-            foreach ($key in $settings.Keys) {
+            foreach ($key in $settings.get_Keys()) {
                 $script:ModuleConfigCache[$ModuleName][$key] = $settings[$key]
             }
         }
