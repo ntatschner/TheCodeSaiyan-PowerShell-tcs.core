@@ -60,6 +60,12 @@ Describe 'ConvertTo-HashTable options' {
         @($result.Keys) | Should -Be @('A')
     }
 
+    It 'Converts a dictionary with a key named Keys' {
+        $result = @{ Keys = 1; B = 2 } | ConvertTo-HashTable -WarningAction SilentlyContinue
+        $result['Keys'] | Should -Be 1
+        $result['B'] | Should -Be 2
+    }
+
     It 'Converts nested arrays of objects at any depth with -Recurse' {
         $json = '{"x":[{"a":1}],"y":{"z":[[{"q":1}]]}}' | ConvertFrom-Json
         $result = $json | ConvertTo-HashTable -Recurse

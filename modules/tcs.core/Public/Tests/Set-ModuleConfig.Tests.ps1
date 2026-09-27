@@ -102,6 +102,12 @@ Describe 'Set-ModuleConfig' {
         (Get-Content -Path $configFile -Raw | ConvertFrom-Json).CustomValue | Should -Be 'abc'
     }
 
+    It 'Sets a setting named Keys with -Setting' {
+        $result = Set-ModuleConfig -ModuleName 'tcs.test' -Setting @{ Keys = 'abc' } -PassThru
+        $result['Keys'] | Should -Be 'abc'
+        (Get-Content -Path $configFile -Raw | ConvertFrom-Json).Keys | Should -Be 'abc'
+    }
+
     It 'Lets explicit parameters win over -Setting' {
         $result = Set-ModuleConfig -ModuleName 'tcs.test' -Setting @{ Telemetry = $true } -Telemetry $false -PassThru
         $result.Telemetry | Should -BeFalse

@@ -50,7 +50,8 @@ function ConvertTo-QueryString {
     )
 
     process {
-        $keys = @($InputObject.Keys)
+        # get_Keys(): a key named "keys" would hide the .Keys property of a hashtable
+        $keys = @($InputObject.get_Keys())
         if ($InputObject -isnot [System.Collections.Specialized.IOrderedDictionary]) {
             $keys = @($keys | Sort-Object -Property { [string]$_ })
         }

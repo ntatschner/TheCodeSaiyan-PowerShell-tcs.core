@@ -54,7 +54,7 @@ function Write-JsonFile {
 
     # Sort keys so the file is stable and readable
     $ordered = [ordered]@{}
-    foreach ($key in ($Data.Keys | Sort-Object)) {
+    foreach ($key in ($Data.get_Keys() | Sort-Object)) {
         $ordered[$key] = $Data[$key]
     }
     $ordered | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop
@@ -80,7 +80,7 @@ function Get-DefaultModuleConfig {
         if ((Test-Path -LiteralPath $moduleDefaultsPath) -and ((Resolve-Path -LiteralPath $moduleDefaultsPath).Path -ne (Resolve-Path -LiteralPath $coreDefaultsPath).Path)) {
             try {
                 $moduleDefaults = Read-JsonFileAsHashtable -Path $moduleDefaultsPath
-                foreach ($key in $moduleDefaults.Keys) {
+                foreach ($key in $moduleDefaults.get_Keys()) {
                     $defaults[$key] = $moduleDefaults[$key]
                 }
             }
@@ -194,7 +194,7 @@ function Get-MaskedModuleConfig {
     )
 
     $copy = @{}
-    foreach ($key in $Config.Keys) {
+    foreach ($key in $Config.get_Keys()) {
         $copy[$key] = $Config[$key]
     }
     if (-not [string]::IsNullOrEmpty([string]$copy['TelemetryApiKey'])) {

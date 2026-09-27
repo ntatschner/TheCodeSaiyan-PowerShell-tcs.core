@@ -40,4 +40,9 @@ Describe 'ConvertTo-QueryString' {
     It 'Accepts a dictionary from the pipeline' {
         [ordered]@{ a = 1 } | ConvertTo-QueryString | Should -BeExactly 'a=1'
     }
+
+    It 'Keeps keys named like dictionary members (keys, values, count)' {
+        ConvertTo-QueryString -InputObject @{ keys = 'DOCS'; values = 'x'; count = 2 } | Should -BeExactly 'count=2&keys=DOCS&values=x'
+        ConvertTo-QueryString -InputObject ([ordered]@{ keys = 'A' }) | Should -BeExactly 'keys=A'
+    }
 }
