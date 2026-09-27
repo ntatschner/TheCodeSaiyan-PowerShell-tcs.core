@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Internal helpers for running script blocks while watching the errors they write
-    (Invoke-TcsCommand and Invoke-WithRetry -RetryOnNonTerminatingError).
+    (Invoke-WithRetry -RetryOnNonTerminatingError).
 
 .NOTES
     Private helper for the tcs.core module.

@@ -7,8 +7,7 @@
     sends one event (success or failure, duration, and the exception type on failure). Call it
     at the end of the command, normally in the end block.
 
-    The run is reported as failed when -Failed or -ErrorRecord is given, or when
-    Invoke-TcsCommand -Token saw an error during the run.
+    The run is reported as failed when -Failed or -ErrorRecord is given.
 
     A token is completed only once; later calls do nothing. Tokens of nested runs
     (IsOutermost = $false) send nothing. Telemetry never breaks the caller: errors are written
@@ -52,9 +51,6 @@
 
 .LINK
     Start-TcsTelemetry
-
-.LINK
-    Invoke-TcsCommand
 #>
 function Complete-TcsTelemetry {
     [CmdletBinding()]

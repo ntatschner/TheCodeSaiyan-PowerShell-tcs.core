@@ -96,11 +96,11 @@
     Author: Nigel Tatschner
     Company: TheCodeSaiyan
 
-    New commands should use Invoke-TcsCommand, or Start-TcsTelemetry and
-    Complete-TcsTelemetry, instead of calling this function directly.
+    New commands should use Start-TcsTelemetry and Complete-TcsTelemetry instead of calling
+    this function directly.
 
 .LINK
-    Invoke-TcsCommand
+    Start-TcsTelemetry
 #>
 function Invoke-TelemetryCollection {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ModulePath',

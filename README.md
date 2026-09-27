@@ -45,8 +45,7 @@ Import-Module ./TheCodeSaiyan-PowerShell-tcs.core/modules/tcs.core/tcs.core.psd1
 | `Get-ModuleConfig` | Returns the settings for the tcs module that owns the calling script |
 | `Set-ModuleConfig` | Changes a module's settings, including module-specific ones with `-Setting` (`-WhatIf` supported) |
 | `Get-ModuleStatus` | Checks the PowerShell Gallery for a newer version (cached, never throws) |
-| `Invoke-TcsCommand` | Runs a command body and records its telemetry (replaces the Start/End boilerplate) |
-| `Start-TcsTelemetry` / `Complete-TcsTelemetry` | Telemetry for pipeline functions (begin/end blocks) |
+| `Start-TcsTelemetry` / `Complete-TcsTelemetry` | Records one command run for telemetry (replaces the Start/End boilerplate) |
 | `Invoke-TelemetryCollection` | Records anonymous usage telemetry for a command or module load (low level) |
 | `Invoke-WithRetry` | Runs a script block with retries, backoff, jitter, HTTP status filters and `Retry-After` |
 | `Get-HttpErrorDetail` | Status code, body and `Retry-After` of a failed web request (5.1 and 7) |
@@ -68,7 +67,7 @@ Modules in the tcs suite should call these tcs.core commands rather than keep th
 
 | Need | Use |
 | --- | --- |
-| Telemetry in every exported command | `Start-TcsTelemetry` / `Complete-TcsTelemetry` inline (keeps error and warning streams unchanged), or `Invoke-TcsCommand` for a body that only returns output (see its help) |
+| Telemetry in every exported command | `Start-TcsTelemetry` / `Complete-TcsTelemetry` (see `Get-Help Start-TcsTelemetry -Full` for the pipeline pattern) |
 | Retrying REST calls on 429/5xx with `Retry-After` | `Invoke-WithRetry -RetryOnStatusCode 429, 502, 503, 504` |
 | Status code and body of a failed request on 5.1 and 7 | `Get-HttpErrorDetail` |
 | Basic authentication | `New-BasicAuthHeader` |
@@ -101,7 +100,10 @@ catch { $detail = Get-HttpErrorDetail $_; "Failed: $($detail.StatusCode) $($deta
 function Get-Widget {
     [CmdletBinding()]
     param([string]$Name)
-    Invoke-TcsCommand -ScriptBlock { Get-Item -Path $Name }
+    $telemetry = Start-TcsTelemetry
+    try { Get-Item -Path $Name -ErrorAction Stop }
+    catch { Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_; throw }
+    finally { Complete-TcsTelemetry -Token $telemetry }
 }
 
 # Protect a secret for the current user

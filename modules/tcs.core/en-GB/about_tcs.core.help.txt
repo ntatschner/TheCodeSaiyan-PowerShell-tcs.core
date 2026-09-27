@@ -32,32 +32,31 @@ LONG DESCRIPTION
         TelemetryUri is configured, or when a module's Telemetry setting is
         $false.
 
-        Wrap a command body in Invoke-TcsCommand to record it:
+        Record a command with Start-TcsTelemetry and Complete-TcsTelemetry:
 
             function Get-Widget {
                 [CmdletBinding()]
                 param([string]$Name)
-                Invoke-TcsCommand -ScriptBlock { Get-Item -Path $Name }
+                $telemetry = Start-TcsTelemetry
+                try {
+                    Get-Item -Path $Name -ErrorAction Stop
+                }
+                catch {
+                    Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
+                    throw
+                }
+                finally {
+                    Complete-TcsTelemetry -Token $telemetry
+                }
             }
 
-        Pipeline functions use Start-TcsTelemetry in begin,
-        Invoke-TcsCommand -Token in process and Complete-TcsTelemetry in end.
-        Only the outermost command of a module is reported; commands it calls
-        in the same module are skipped. A run is failed when the body throws
-        or writes an error. Terminating errors are rethrown unchanged and
-        telemetry never breaks the command. Inside the script block,
-        $PSBoundParameters and $MyInvocation describe the script block: copy
-        them to a variable first if the body needs them.
-
-        Invoke-TcsCommand writes the body's errors and warnings again from
-        itself, so Write-Error IDs end in ',Invoke-TcsCommand' and the
-        command's -ErrorVariable (with -ErrorAction SilentlyContinue),
-        -WarningVariable and -InformationVariable do not collect them. An
-        error raised with $PSCmdlet.ThrowTerminatingError() inside it is
-        recorded as a successful run. For a command that writes errors, warnings or information, call
-        Start-TcsTelemetry and complete the token with Complete-TcsTelemetry
-        in a catch block (with -ErrorRecord $_) and a finally block instead;
-        see Get-Help Invoke-TcsCommand -Full.
+        Pipeline functions start the token in begin and complete it in end,
+        and also in a finally block of process when the item did not finish,
+        because end does not run when a later command stops the pipeline.
+        See Get-Help Start-TcsTelemetry -Full. Only the outermost command of
+        a module is reported; commands it calls in the same module are
+        skipped. A token is completed once; later calls do nothing, and
+        telemetry never breaks the command.
 
         Invoke-TelemetryCollection still works for existing commands. Its
         -ModulePath, -Minimal and -Stage 'In-Progress' are deprecated.
@@ -128,7 +127,6 @@ SEE ALSO
     Get-ModuleConfig
     Set-ModuleConfig
     Get-ModuleStatus
-    Invoke-TcsCommand
     Start-TcsTelemetry
     Complete-TcsTelemetry
     Invoke-TelemetryCollection
