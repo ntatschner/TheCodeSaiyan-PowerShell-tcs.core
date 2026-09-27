@@ -68,7 +68,7 @@ Modules in the tcs suite should call these tcs.core commands rather than keep th
 
 | Need | Use |
 | --- | --- |
-| Telemetry in every exported command | `Invoke-TcsCommand` (or `Start-TcsTelemetry` / `Complete-TcsTelemetry` for pipeline functions) |
+| Telemetry in every exported command | `Start-TcsTelemetry` / `Complete-TcsTelemetry` inline (keeps error and warning streams unchanged), or `Invoke-TcsCommand` for a body that only returns output (see its help) |
 | Retrying REST calls on 429/5xx with `Retry-After` | `Invoke-WithRetry -RetryOnStatusCode 429, 502, 503, 504` |
 | Status code and body of a failed request on 5.1 and 7 | `Get-HttpErrorDetail` |
 | Basic authentication | `New-BasicAuthHeader` |

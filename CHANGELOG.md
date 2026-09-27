@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-09-27
+
+### Fixed
+- A dictionary key named `keys` (in any case) was read as the dictionary's key list, because
+  PowerShell resolves `.Keys` to such an entry first. `ConvertTo-QueryString @{ keys = 'A' }`
+  returned an empty string (even with other keys present); `ConvertTo-HashTable`,
+  `Set-ModuleConfig -Setting` and `Invoke-TelemetryCollection -Tags` dropped or mishandled that
+  entry, and a stored setting named `Keys` broke reading and writing the settings file. Every
+  dictionary is now enumerated with `get_Keys()`.
+
+### Documentation
+- `Invoke-TcsCommand` writes the body's errors and warnings again from itself: `Write-Error`
+  IDs end in `,Invoke-TcsCommand`, and the command's `-ErrorVariable` (with
+  `-ErrorAction SilentlyContinue`), `-WarningVariable` and `-InformationVariable` do not collect
+  what the body writes. Its help, the about topic and the README now describe this and show the
+  inline `Start-TcsTelemetry` / `Complete-TcsTelemetry` pattern (with the pipeline variant) for
+  commands that write errors, warnings or information.
+
 ## [0.4.0] - 2026-09-24
 
 Additive release: every 0.3.0 command and parameter still works.
