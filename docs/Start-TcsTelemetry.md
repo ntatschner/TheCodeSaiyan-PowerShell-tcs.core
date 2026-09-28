@@ -22,9 +22,10 @@ The Start-TcsTelemetry function is the first half of the telemetry wrapper for c
 tcs modules.
 Call it once at the start of a command (in the begin block of a pipeline
 function), keep the token it returns, and pass the token to Complete-TcsTelemetry when the
-command ends.
-For commands without begin/process/end blocks, Invoke-TcsCommand does both
-in one call.
+command ends: in a catch block with -ErrorRecord when the command fails, and in a finally
+(or end) block otherwise.
+Complete-TcsTelemetry does nothing for a token that is already
+complete, so completing it in both places is safe.
 
 The command, module and version are taken from the calling command when they are not
 given.
@@ -47,37 +48,63 @@ off; see Invoke-TelemetryCollection.
 ```
 function Get-Widget {
     [CmdletBinding()]
-    param([Parameter(ValueFromPipeline)][string]$Name)
-    begin {
-        $telemetry = Start-TcsTelemetry
+    param([string]$Name)
+    $telemetry = Start-TcsTelemetry
+    try {
+        Get-Item -Path $Name -ErrorAction Stop
     }
-    process {
-        Invoke-TcsCommand -Token $telemetry -ScriptBlock {
-            Get-Item -Path $Name
-        }
+    catch {
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
+        throw
     }
-    end {
+    finally {
         Complete-TcsTelemetry -Token $telemetry
     }
 }
 ```
 
-A pipeline function: one event is sent for the whole pipeline run.
-Invoke-TcsCommand
--Token records errors in each process block; a terminating error completes the run as
-failed.
+A command without pipeline blocks: the run is completed as failed in catch, and as
+successful in finally otherwise.
 
 ### EXAMPLE 2
 ```
-begin { $telemetry = Start-TcsTelemetry }
-process {
-    try { Set-Thing -Name $Name -ErrorAction Stop }
-    catch { Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_; throw }
+function Set-Widget {
+    [CmdletBinding()]
+    param([Parameter(ValueFromPipeline)][string]$Name)
+    begin {
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
+    }
+    process {
+        $completed = $false
+        try {
+            Set-Thing -Name $Name -ErrorAction Stop
+            $completed = $true
+        }
+        catch {
+            $lastError = $_
+            throw
+        }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
+        }
+    }
+    end {
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+    }
 }
-end { Complete-TcsTelemetry -Token $telemetry }
 ```
 
-Completes the run by hand, as failed when an error is caught.
+A pipeline function: one event is sent for the whole pipeline run.
+The end block does not
+run when a later command stops the pipeline (for example Select-Object -First), or after
+$PSCmdlet.ThrowTerminatingError or $PSCmdlet.WriteError with -ErrorAction Stop, which also
+skip catch.
+The finally block completes the run in those cases.
+Set $lastError before
+calling $PSCmdlet.ThrowTerminatingError so the run is reported as failed.
 
 ## PARAMETERS
 
@@ -163,6 +190,4 @@ Company: TheCodeSaiyan
 ## RELATED LINKS
 
 [Complete-TcsTelemetry]()
-
-[Invoke-TcsCommand]()
 

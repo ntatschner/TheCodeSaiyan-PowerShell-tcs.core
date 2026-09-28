@@ -301,10 +301,10 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 Author: Nigel Tatschner
 Company: TheCodeSaiyan
 
-New commands should use Invoke-TcsCommand, or Start-TcsTelemetry and
-Complete-TcsTelemetry, instead of calling this function directly.
+New commands should use Start-TcsTelemetry and Complete-TcsTelemetry instead of calling
+this function directly.
 
 ## RELATED LINKS
 
-[Invoke-TcsCommand]()
+[Start-TcsTelemetry]()
 

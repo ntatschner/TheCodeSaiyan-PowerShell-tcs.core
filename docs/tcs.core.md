@@ -47,9 +47,6 @@ Checks whether a newer version of a module is available in the PowerShell Galler
 ### [Get-ParameterValues](Get-ParameterValues.md)
 Extracts and filters parameter values from PSBoundParameters.
 
-### [Invoke-TcsCommand](Invoke-TcsCommand.md)
-Runs the body of a tcs command and records anonymous telemetry for it.
-
 ### [Invoke-TelemetryCollection](Invoke-TelemetryCollection.md)
 Records anonymous usage telemetry for a command or module load.
 

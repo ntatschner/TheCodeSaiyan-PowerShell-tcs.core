@@ -11,7 +11,7 @@
     </command:details>
     <maml:description>
       <maml:para>The Complete-TcsTelemetry function stops the timer for a token from Start-TcsTelemetry and sends one event (success or failure, duration, and the exception type on failure). Call it at the end of the command, normally in the end block.</maml:para>
-      <maml:para>The run is reported as failed when -Failed or -ErrorRecord is given, or when Invoke-TcsCommand -Token saw an error during the run.</maml:para>
+      <maml:para>The run is reported as failed when -Failed or -ErrorRecord is given.</maml:para>
       <maml:para>A token is completed only once; later calls do nothing. Tokens of nested runs (IsOutermost = $false) send nothing. Telemetry never breaks the caller: errors are written to the verbose stream only, and nothing is written to the pipeline.</maml:para>
     </maml:description>
     <command:syntax>
@@ -173,10 +173,6 @@
     <command:relatedLinks>
       <maml:navigationLink>
         <maml:linkText>Start-TcsTelemetry</maml:linkText>
-        <maml:uri></maml:uri>
-      </maml:navigationLink>
-      <maml:navigationLink>
-        <maml:linkText>Invoke-TcsCommand</maml:linkText>
         <maml:uri></maml:uri>
       </maml:navigationLink>
     </command:relatedLinks>
@@ -2058,294 +2054,6 @@ if (-not $credential) { $credential = Get-Credential }</dev:code>
   </command:command>
   <command:command xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10" xmlns:MSHelp="http://msdn.microsoft.com/mshelp">
     <command:details>
-      <command:name>Invoke-TcsCommand</command:name>
-      <command:verb>Invoke</command:verb>
-      <command:noun>TcsCommand</command:noun>
-      <maml:description>
-        <maml:para>Runs the body of a tcs command and records anonymous telemetry for it.</maml:para>
-      </maml:description>
-    </command:details>
-    <maml:description>
-      <maml:para>The Invoke-TcsCommand function replaces the telemetry boilerplate in tcs module commands. Wrap the body of a command in it:</maml:para>
-      <maml:para>  function Get-Widget {       [CmdletBinding()]       param([string]$Name)       Invoke-TcsCommand -ScriptBlock {           Get-Item -Path $Name       }   }</maml:para>
-      <maml:para>The script block runs in the scope of the calling command (it is dot-sourced), so it reads and sets the command's variables as if it were written inline, and $PSCmdlet, $_ and ShouldProcess work as usual. Two automatic variables are different inside the script block: $PSBoundParameters and $MyInvocation describe the script block, not the command. Copy them to a variable before Invoke-TcsCommand if the body needs them.</maml:para>
-      <maml:para>Limitation: Invoke-TcsCommand writes the body's errors and warnings again from itself, so inside it an error written with Write-Error gets the error ID '&lt;Id&gt;,Invoke-TcsCommand' instead of '&lt;Id&gt;,&lt;Command&gt;', and the command's -ErrorVariable (with -ErrorAction SilentlyContinue), -WarningVariable and -InformationVariable do not collect what the body writes. An error raised with $PSCmdlet.ThrowTerminatingError() inside the script block reaches the caller, but the run is recorded as successful. For a command that writes errors, warnings or information records its callers may capture, record telemetry inline instead, which leaves every stream unchanged:</maml:para>
-      <maml:para>  function Get-Widget {       [CmdletBinding()]       param([string]$Name)       $telemetry = Start-TcsTelemetry       try {           Get-Item -Path $Name       }       catch {           Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_           throw       }       finally {           Complete-TcsTelemetry -Token $telemetry       }   }</maml:para>
-      <maml:para>Complete-TcsTelemetry does nothing for a token that is already complete. In a pipeline function, start the token in begin, complete it in end, and also complete it in a finally block of process when the item did not finish, because end does not run when a later command stops the pipeline (for example Select-Object -First).</maml:para>
-      <maml:para>What it does:   - Writes exactly what the script block outputs, unchanged (collections are not     unrolled or wrapped), and nothing else.   - Reports the run as failed when the script block throws a terminating error or writes     a non-terminating error (Write-Error or a cmdlet error) that reaches the error stream.     Errors that are caught, or silenced with -ErrorAction SilentlyContinue/Ignore, do not     count. Errors written directly with $PSCmdlet.WriteError() bypass it; use the -Token     form and Complete-TcsTelemetry -Failed for those.   - Rethrows terminating errors unchanged, and passes non-terminating errors through.   - Reports only the outermost run: when an exported command calls another exported     command of the same module, the inner run sends nothing (it is skipped, not tagged).   - Never fails or changes the command because of telemetry; telemetry problems are     written to the verbose stream only.</maml:para>
-      <maml:para>Without -Token, one call is one run: it starts and completes the telemetry itself. The command, module and version are taken from the calling command.</maml:para>
-      <maml:para>With -Token (from Start-TcsTelemetry), it only records errors on that token. Use this in the process block of pipeline functions, and complete the token in the end block. If the script block throws, or the pipeline is stopped early (for example by Select-Object -First), the token is completed here, because the end block will not run.</maml:para>
-    </maml:description>
-    <command:syntax>
-      <command:syntaxItem>
-        <maml:name>Invoke-TcsCommand</maml:name>
-        <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="1" aliases="none">
-          <maml:name>ScriptBlock</maml:name>
-          <maml:description>
-            <maml:para>The body of the command.</maml:para>
-          </maml:description>
-          <command:parameterValue required="true" variableLength="false">ScriptBlock</command:parameterValue>
-          <dev:type>
-            <maml:name>ScriptBlock</maml:name>
-            <maml:uri />
-          </dev:type>
-          <dev:defaultValue>None</dev:defaultValue>
-        </command:parameter>
-        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
-          <maml:name>CommandName</maml:name>
-          <maml:description>
-            <maml:para>The name reported for the command. Defaults to the name of the calling command.</maml:para>
-          </maml:description>
-          <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
-          <dev:type>
-            <maml:name>String</maml:name>
-            <maml:uri />
-          </dev:type>
-          <dev:defaultValue>None</dev:defaultValue>
-        </command:parameter>
-        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
-          <maml:name>ModuleName</maml:name>
-          <maml:description>
-            <maml:para>The module the command belongs to. Defaults to the module of the calling command.</maml:para>
-          </maml:description>
-          <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
-          <dev:type>
-            <maml:name>String</maml:name>
-            <maml:uri />
-          </dev:type>
-          <dev:defaultValue>None</dev:defaultValue>
-        </command:parameter>
-        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
-          <maml:name>ModuleVersion</maml:name>
-          <maml:description>
-            <maml:para>The module version. Defaults to the version of the calling command's module.</maml:para>
-          </maml:description>
-          <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
-          <dev:type>
-            <maml:name>String</maml:name>
-            <maml:uri />
-          </dev:type>
-          <dev:defaultValue>None</dev:defaultValue>
-        </command:parameter>
-        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="proga">
-          <maml:name>ProgressAction</maml:name>
-          <maml:description>
-            <maml:para>{{ Fill ProgressAction Description }}</maml:para>
-          </maml:description>
-          <command:parameterValue required="true" variableLength="false">ActionPreference</command:parameterValue>
-          <dev:type>
-            <maml:name>ActionPreference</maml:name>
-            <maml:uri />
-          </dev:type>
-          <dev:defaultValue>None</dev:defaultValue>
-        </command:parameter>
-      </command:syntaxItem>
-      <command:syntaxItem>
-        <maml:name>Invoke-TcsCommand</maml:name>
-        <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="1" aliases="none">
-          <maml:name>ScriptBlock</maml:name>
-          <maml:description>
-            <maml:para>The body of the command.</maml:para>
-          </maml:description>
-          <command:parameterValue required="true" variableLength="false">ScriptBlock</command:parameterValue>
-          <dev:type>
-            <maml:name>ScriptBlock</maml:name>
-            <maml:uri />
-          </dev:type>
-          <dev:defaultValue>None</dev:defaultValue>
-        </command:parameter>
-        <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
-          <maml:name>Token</maml:name>
-          <maml:description>
-            <maml:para>A token from Start-TcsTelemetry. Errors are recorded on it and the token is completed only if the script block throws or the pipeline is stopped.</maml:para>
-          </maml:description>
-          <command:parameterValue required="true" variableLength="false">PSObject</command:parameterValue>
-          <dev:type>
-            <maml:name>PSObject</maml:name>
-            <maml:uri />
-          </dev:type>
-          <dev:defaultValue>None</dev:defaultValue>
-        </command:parameter>
-        <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="proga">
-          <maml:name>ProgressAction</maml:name>
-          <maml:description>
-            <maml:para>{{ Fill ProgressAction Description }}</maml:para>
-          </maml:description>
-          <command:parameterValue required="true" variableLength="false">ActionPreference</command:parameterValue>
-          <dev:type>
-            <maml:name>ActionPreference</maml:name>
-            <maml:uri />
-          </dev:type>
-          <dev:defaultValue>None</dev:defaultValue>
-        </command:parameter>
-      </command:syntaxItem>
-    </command:syntax>
-    <command:parameters>
-      <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="1" aliases="none">
-        <maml:name>ScriptBlock</maml:name>
-        <maml:description>
-          <maml:para>The body of the command.</maml:para>
-        </maml:description>
-        <command:parameterValue required="true" variableLength="false">ScriptBlock</command:parameterValue>
-        <dev:type>
-          <maml:name>ScriptBlock</maml:name>
-          <maml:uri />
-        </dev:type>
-        <dev:defaultValue>None</dev:defaultValue>
-      </command:parameter>
-      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
-        <maml:name>CommandName</maml:name>
-        <maml:description>
-          <maml:para>The name reported for the command. Defaults to the name of the calling command.</maml:para>
-        </maml:description>
-        <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
-        <dev:type>
-          <maml:name>String</maml:name>
-          <maml:uri />
-        </dev:type>
-        <dev:defaultValue>None</dev:defaultValue>
-      </command:parameter>
-      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
-        <maml:name>ModuleName</maml:name>
-        <maml:description>
-          <maml:para>The module the command belongs to. Defaults to the module of the calling command.</maml:para>
-        </maml:description>
-        <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
-        <dev:type>
-          <maml:name>String</maml:name>
-          <maml:uri />
-        </dev:type>
-        <dev:defaultValue>None</dev:defaultValue>
-      </command:parameter>
-      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
-        <maml:name>ModuleVersion</maml:name>
-        <maml:description>
-          <maml:para>The module version. Defaults to the version of the calling command's module.</maml:para>
-        </maml:description>
-        <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
-        <dev:type>
-          <maml:name>String</maml:name>
-          <maml:uri />
-        </dev:type>
-        <dev:defaultValue>None</dev:defaultValue>
-      </command:parameter>
-      <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="none">
-        <maml:name>Token</maml:name>
-        <maml:description>
-          <maml:para>A token from Start-TcsTelemetry. Errors are recorded on it and the token is completed only if the script block throws or the pipeline is stopped.</maml:para>
-        </maml:description>
-        <command:parameterValue required="true" variableLength="false">PSObject</command:parameterValue>
-        <dev:type>
-          <maml:name>PSObject</maml:name>
-          <maml:uri />
-        </dev:type>
-        <dev:defaultValue>None</dev:defaultValue>
-      </command:parameter>
-      <command:parameter required="false" variableLength="true" globbing="false" pipelineInput="False" position="named" aliases="proga">
-        <maml:name>ProgressAction</maml:name>
-        <maml:description>
-          <maml:para>{{ Fill ProgressAction Description }}</maml:para>
-        </maml:description>
-        <command:parameterValue required="true" variableLength="false">ActionPreference</command:parameterValue>
-        <dev:type>
-          <maml:name>ActionPreference</maml:name>
-          <maml:uri />
-        </dev:type>
-        <dev:defaultValue>None</dev:defaultValue>
-      </command:parameter>
-    </command:parameters>
-    <command:inputTypes>
-      <command:inputType>
-        <dev:type>
-          <maml:name>None</maml:name>
-        </dev:type>
-        <maml:description>
-          <maml:para></maml:para>
-        </maml:description>
-      </command:inputType>
-      <command:inputType>
-        <dev:type>
-          <maml:name>This function does not accept pipeline input.</maml:name>
-        </dev:type>
-        <maml:description>
-          <maml:para></maml:para>
-        </maml:description>
-      </command:inputType>
-    </command:inputTypes>
-    <command:returnValues>
-      <command:returnValue>
-        <dev:type>
-          <maml:name>System.Object</maml:name>
-        </dev:type>
-        <maml:description>
-          <maml:para></maml:para>
-        </maml:description>
-      </command:returnValue>
-      <command:returnValue>
-        <dev:type>
-          <maml:name>The output of the script block.</maml:name>
-        </dev:type>
-        <maml:description>
-          <maml:para></maml:para>
-        </maml:description>
-      </command:returnValue>
-    </command:returnValues>
-    <maml:alertSet>
-      <maml:alert>
-        <maml:para>Author: Nigel Tatschner Company: TheCodeSaiyan</maml:para>
-        <maml:para>Invoke-TelemetryCollection is unchanged and still works for existing commands.</maml:para>
-        <maml:para>Lines that native programs in the script block write to stderr are passed on through the error stream (without the wrapper, PowerShell 7 writes them straight to the console) and never mark the run as failed. On Windows PowerShell 5.1, a native program that writes to stderr while $ErrorActionPreference is 'Stop' raises a NativeCommandError, as it does whenever its errors are redirected; set $ErrorActionPreference = 'Continue' inside the script block before such calls.</maml:para>
-      </maml:alert>
-    </maml:alertSet>
-    <command:examples>
-      <command:example>
-        <maml:title>-------------------------- EXAMPLE 1 --------------------------</maml:title>
-        <dev:code>function Remove-Widget {
-    [CmdletBinding(SupportsShouldProcess)]
-    param([Parameter(Mandatory)][string]$Name)
-    $bound = $PSBoundParameters
-    Invoke-TcsCommand -ScriptBlock {
-        if ($PSCmdlet.ShouldProcess($Name, 'Remove widget')) {
-            Invoke-RestMethod -Method Delete -Uri "https://api.example.com/widgets/$Name"
-        }
-        Write-Verbose "Parameters: $($bound.Keys -join ', ')"
-    }
-}</dev:code>
-        <dev:remarks>
-          <maml:para>A simple function. $PSBoundParameters is copied to $bound first because inside the script block it describes the script block.</maml:para>
-        </dev:remarks>
-      </command:example>
-      <command:example>
-        <maml:title>-------------------------- EXAMPLE 2 --------------------------</maml:title>
-        <dev:code>function Get-Widget {
-    [CmdletBinding()]
-    param([Parameter(ValueFromPipeline)][string]$Name)
-    begin { $telemetry = Start-TcsTelemetry }
-    process {
-        Invoke-TcsCommand -Token $telemetry -ScriptBlock {
-            Invoke-RestMethod -Uri "https://api.example.com/widgets/$Name"
-        }
-    }
-    end { Complete-TcsTelemetry -Token $telemetry }
-}</dev:code>
-        <dev:remarks>
-          <maml:para>A pipeline function: one event for the whole pipeline run, failed if any item failed.</maml:para>
-        </dev:remarks>
-      </command:example>
-    </command:examples>
-    <command:relatedLinks>
-      <maml:navigationLink>
-        <maml:linkText>Start-TcsTelemetry</maml:linkText>
-        <maml:uri></maml:uri>
-      </maml:navigationLink>
-      <maml:navigationLink>
-        <maml:linkText>Complete-TcsTelemetry</maml:linkText>
-        <maml:uri></maml:uri>
-      </maml:navigationLink>
-    </command:relatedLinks>
-  </command:command>
-  <command:command xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10" xmlns:MSHelp="http://msdn.microsoft.com/mshelp">
-    <command:details>
       <command:name>Invoke-TelemetryCollection</command:name>
       <command:verb>Invoke</command:verb>
       <command:noun>TelemetryCollection</command:noun>
@@ -2731,7 +2439,7 @@ if (-not $credential) { $credential = Get-Credential }</dev:code>
     <maml:alertSet>
       <maml:alert>
         <maml:para>Author: Nigel Tatschner Company: TheCodeSaiyan</maml:para>
-        <maml:para>New commands should use Invoke-TcsCommand, or Start-TcsTelemetry and Complete-TcsTelemetry, instead of calling this function directly.</maml:para>
+        <maml:para>New commands should use Start-TcsTelemetry and Complete-TcsTelemetry instead of calling this function directly.</maml:para>
       </maml:alert>
     </maml:alertSet>
     <command:examples>
@@ -2754,7 +2462,7 @@ catch {
     </command:examples>
     <command:relatedLinks>
       <maml:navigationLink>
-        <maml:linkText>Invoke-TcsCommand</maml:linkText>
+        <maml:linkText>Start-TcsTelemetry</maml:linkText>
         <maml:uri></maml:uri>
       </maml:navigationLink>
     </command:relatedLinks>
@@ -5923,7 +5631,7 @@ $protected = Protect-ConfigValue -Value "ConnectionString" -Key $key</dev:code>
       </maml:description>
     </command:details>
     <maml:description>
-      <maml:para>The Start-TcsTelemetry function is the first half of the telemetry wrapper for commands in tcs modules. Call it once at the start of a command (in the begin block of a pipeline function), keep the token it returns, and pass the token to Complete-TcsTelemetry when the command ends. For commands without begin/process/end blocks, Invoke-TcsCommand does both in one call.</maml:para>
+      <maml:para>The Start-TcsTelemetry function is the first half of the telemetry wrapper for commands in tcs modules. Call it once at the start of a command (in the begin block of a pipeline function), keep the token it returns, and pass the token to Complete-TcsTelemetry when the command ends: in a catch block with -ErrorRecord when the command fails, and in a finally (or end) block otherwise. Complete-TcsTelemetry does nothing for a token that is already complete, so completing it in both places is safe.</maml:para>
       <maml:para>The command, module and version are taken from the calling command when they are not given.</maml:para>
       <maml:para>Only the outermost run is reported. When an exported command calls another exported command of the same module, the inner run returns a token with IsOutermost = $false and sends nothing, so one user action is one event. Commands of other modules are reported separately.</maml:para>
       <maml:para>Telemetry never breaks the caller: if anything goes wrong, a token is still returned and the failure is written to the verbose stream. Nothing is sent when telemetry is turned off; see Invoke-TelemetryCollection.</maml:para>
@@ -6085,43 +5793,60 @@ $protected = Protect-ConfigValue -Value "ConnectionString" -Key $key</dev:code>
         <maml:title>-------------------------- EXAMPLE 1 --------------------------</maml:title>
         <dev:code>function Get-Widget {
     [CmdletBinding()]
-    param([Parameter(ValueFromPipeline)][string]$Name)
-    begin {
-        $telemetry = Start-TcsTelemetry
+    param([string]$Name)
+    $telemetry = Start-TcsTelemetry
+    try {
+        Get-Item -Path $Name -ErrorAction Stop
     }
-    process {
-        Invoke-TcsCommand -Token $telemetry -ScriptBlock {
-            Get-Item -Path $Name
-        }
+    catch {
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_
+        throw
     }
-    end {
+    finally {
         Complete-TcsTelemetry -Token $telemetry
     }
 }</dev:code>
         <dev:remarks>
-          <maml:para>A pipeline function: one event is sent for the whole pipeline run. Invoke-TcsCommand -Token records errors in each process block; a terminating error completes the run as failed.</maml:para>
+          <maml:para>A command without pipeline blocks: the run is completed as failed in catch, and as successful in finally otherwise.</maml:para>
         </dev:remarks>
       </command:example>
       <command:example>
         <maml:title>-------------------------- EXAMPLE 2 --------------------------</maml:title>
-        <dev:code>begin { $telemetry = Start-TcsTelemetry }
-process {
-    try { Set-Thing -Name $Name -ErrorAction Stop }
-    catch { Complete-TcsTelemetry -Token $telemetry -ErrorRecord $_; throw }
-}
-end { Complete-TcsTelemetry -Token $telemetry }</dev:code>
+        <dev:code>function Set-Widget {
+    [CmdletBinding()]
+    param([Parameter(ValueFromPipeline)][string]$Name)
+    begin {
+        $telemetry = Start-TcsTelemetry
+        $lastError = $null
+    }
+    process {
+        $completed = $false
+        try {
+            Set-Thing -Name $Name -ErrorAction Stop
+            $completed = $true
+        }
+        catch {
+            $lastError = $_
+            throw
+        }
+        finally {
+            if (-not $completed) {
+                Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+            }
+        }
+    }
+    end {
+        Complete-TcsTelemetry -Token $telemetry -ErrorRecord $lastError
+    }
+}</dev:code>
         <dev:remarks>
-          <maml:para>Completes the run by hand, as failed when an error is caught.</maml:para>
+          <maml:para>A pipeline function: one event is sent for the whole pipeline run. The end block does not run when a later command stops the pipeline (for example Select-Object -First), or after $PSCmdlet.ThrowTerminatingError or $PSCmdlet.WriteError with -ErrorAction Stop, which also skip catch. The finally block completes the run in those cases. Set $lastError before calling $PSCmdlet.ThrowTerminatingError so the run is reported as failed.</maml:para>
         </dev:remarks>
       </command:example>
     </command:examples>
     <command:relatedLinks>
       <maml:navigationLink>
         <maml:linkText>Complete-TcsTelemetry</maml:linkText>
-        <maml:uri></maml:uri>
-      </maml:navigationLink>
-      <maml:navigationLink>
-        <maml:linkText>Invoke-TcsCommand</maml:linkText>
         <maml:uri></maml:uri>
       </maml:navigationLink>
     </command:relatedLinks>
