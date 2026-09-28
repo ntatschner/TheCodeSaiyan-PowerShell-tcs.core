@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-27
+
+### Removed
+- `Invoke-TcsCommand` (breaking). It wrote the body's errors and warnings again from itself, so
+  error IDs ended in `,Invoke-TcsCommand`, the command's `-ErrorVariable`, `-WarningVariable` and
+  `-InformationVariable` did not collect them, and `$PSCmdlet.ThrowTerminatingError()` in the body
+  was recorded as a successful run. Record commands with `Start-TcsTelemetry` and
+  `Complete-TcsTelemetry` instead; their help shows the pattern for simple and pipeline commands.
+  tcs.openapi 0.2.1 and later no longer use it, and no other tcs module did.
+- The private `Invoke-TcsScriptBlock` helper, used only by `Invoke-TcsCommand`.
+
 ## [0.4.1] - 2026-09-27
 
 ### Fixed

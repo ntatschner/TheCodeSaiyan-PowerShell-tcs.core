@@ -1,5 +1,5 @@
 @{
-    ModuleVersion        = '0.4.1'
+    ModuleVersion        = '0.5.0'
     GUID                 = 'a61ffd6a-dac4-4de4-a830-0e58a0535eaa'
     Author               = 'Nigel Tatschner'
     CompanyName          = 'TheCodeSaiyan'
@@ -21,7 +21,6 @@
         'Get-ModuleSecret',
         'Get-ModuleStatus',
         'Get-ParameterValues',
-        'Invoke-TcsCommand',
         'Invoke-TelemetryCollection',
         'Invoke-WithRetry',
         'New-BasicAuthHeader',

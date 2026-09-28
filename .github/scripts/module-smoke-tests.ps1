@@ -49,8 +49,6 @@ try {
     $retryResult = Invoke-WithRetry -ScriptBlock { 'success' } -MaxRetries 1
     if ($retryResult -ne 'success') { throw "Invoke-WithRetry returned '$retryResult' (expected 'success')." }
 
-    $wrapped = Invoke-TcsCommand -ScriptBlock { , @(1) } -CommandName 'Smoke-Test' -ModuleName $moduleName
-    if ($wrapped -isnot [array] -or $wrapped.Count -ne 1) { throw 'Invoke-TcsCommand changed the script block output.' }
     $token = Start-TcsTelemetry -CommandName 'Smoke-Test' -ModuleName $moduleName
     Complete-TcsTelemetry -Token $token
 

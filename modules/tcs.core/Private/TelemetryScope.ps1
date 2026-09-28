@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Internal helpers for Start-TcsTelemetry, Complete-TcsTelemetry and Invoke-TcsCommand.
+    Internal helpers for Start-TcsTelemetry and Complete-TcsTelemetry.
 
 .DESCRIPTION
     Each command run gets a token. Only the outermost run of a module is reported: when an
@@ -148,19 +148,4 @@ function Complete-TcsTelemetryToken {
     if ($Token.IsOutermost) {
         Invoke-TelemetryCollection -ModuleName $Token.ModuleName -ModuleVersion $Token.ModuleVersion -CommandName $Token.CommandName -ExecutionID $Token.Id -Stage End -Failed ([bool]$Token.Failed) -Exception $Token.Exception
     }
-}
-
-function Invoke-TcsScriptBlock {
-    <#
-    .SYNOPSIS
-        Runs a script block in the scope it was written in (dot-sourced), so its variables
-        persist, as if it were written inline.
-    #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [scriptblock]$ScriptBlock
-    )
-
-    . $ScriptBlock
 }
