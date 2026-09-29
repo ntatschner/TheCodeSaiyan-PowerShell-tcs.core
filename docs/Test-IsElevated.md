@@ -13,7 +13,7 @@ Tests whether the current PowerShell session is running with elevated (administr
 ## SYNTAX
 
 ```
-Test-IsElevated [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Test-IsElevated [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -49,21 +49,6 @@ Write-Output "Elevated: $elevated"
 Stores the elevation status in a variable for later use.
 
 ## PARAMETERS
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
-Position: Named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: False
-```
 
 ### CommonParameters
 This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable, -InformationAction, -InformationVariable, -OutVariable, -OutBuffer, -PipelineVariable, -Verbose, -WarningAction, and -WarningVariable. For more information, see [about_CommonParameters](http://go.microsoft.com/fwlink/?LinkID=113216).

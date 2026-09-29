@@ -1,14 +1,14 @@
 ---
 Module Name: tcs.core
-Module Guid: {{ Update Module Guid }}
-Download Help Link: {{ Update Download Link }}
-Help Version: {{ Update Help Version }}
-Locale: {{ Update Locale }}
+Module Guid: a61ffd6a-dac4-4de4-a830-0e58a0535eaa
+Download Help Link: https://ntatschner.github.io/TheCodeSaiyan-PowerShell-tcs.core/
+Help Version: 0.5.0
+Locale: en-GB
 ---
 
 # tcs.core Module
 ## Description
-{{ Fill in the Description }}
+Core functions required for the suite of modules including configuration management, dynamic parameters, telemetry collection and a telemetry command wrapper, structured logging, HTTP-aware retry logic, HTTP helpers, saved module secrets, string casing utilities, and config value protection.
 
 ## tcs.core Cmdlets
 ### [Complete-TcsTelemetry](Complete-TcsTelemetry.md)

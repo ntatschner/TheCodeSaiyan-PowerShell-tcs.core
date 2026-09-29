@@ -14,13 +14,13 @@ Encrypts a string value for secure storage in configuration files.
 
 ### Scope (Default)
 ```
-Protect-ConfigValue [-Value] <String> [-Scope <String>] [-ProgressAction <ActionPreference>]
+Protect-ConfigValue [-Value] <String> [-Scope <String>]
  [<CommonParameters>]
 ```
 
 ### Key
 ```
-Protect-ConfigValue [-Value] <String> -Key <Byte[]> [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Protect-ConfigValue [-Value] <String> -Key <Byte[]> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -111,21 +111,6 @@ Parameter Sets: Key
 Aliases:
 
 Required: True
-Position: Named
-Default value: None
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
 Position: Named
 Default value: None
 Accept pipeline input: False

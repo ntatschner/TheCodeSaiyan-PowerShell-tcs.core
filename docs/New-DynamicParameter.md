@@ -16,7 +16,7 @@ Creates a dynamic parameter for use in PowerShell functions with DynamicParam bl
 ```
 New-DynamicParameter -Name <String> -ParameterType <Type> [-ParameterSetName <String>] [-Mandatory]
  [-Position <Int32>] [-ValueFromPipelineByPropertyName] [-HelpMessage <String>] [-ValidateNotNullOrEmpty]
- [-Alias <String[]>] [-ValueFromPipeline] [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [-Alias <String[]>] [-ValueFromPipeline] [<CommonParameters>]
 ```
 
 ### ValidateSet
@@ -24,14 +24,14 @@ New-DynamicParameter -Name <String> -ParameterType <Type> [-ParameterSetName <St
 New-DynamicParameter -Name <String> -ParameterType <Type> [-ParameterSetName <String>] [-Mandatory]
  [-Position <Int32>] [-ValueFromPipelineByPropertyName] [-HelpMessage <String>] -ValidateSet <String[]>
  [-IgnoreCase <Boolean>] [-ValidateNotNullOrEmpty] [-Alias <String[]>] [-ValueFromPipeline]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [<CommonParameters>]
 ```
 
 ### ValidateScript
 ```
 New-DynamicParameter -Name <String> -ParameterType <Type> [-ParameterSetName <String>] [-Mandatory]
  [-Position <Int32>] [-ValueFromPipelineByPropertyName] [-HelpMessage <String>] -ValidateScript <ScriptBlock>
- [-ValidateNotNullOrEmpty] [-Alias <String[]>] [-ValueFromPipeline] [-ProgressAction <ActionPreference>]
+ [-ValidateNotNullOrEmpty] [-Alias <String[]>] [-ValueFromPipeline]
  [<CommonParameters>]
 ```
 
@@ -39,7 +39,7 @@ New-DynamicParameter -Name <String> -ParameterType <Type> [-ParameterSetName <St
 ```
 New-DynamicParameter -Name <String> -ParameterType <Type> [-ParameterSetName <String>] [-Mandatory]
  [-Position <Int32>] [-ValueFromPipelineByPropertyName] [-HelpMessage <String>] [-ValidateNotNullOrEmpty]
- -ValidatePattern <String> [-Alias <String[]>] [-ValueFromPipeline] [-ProgressAction <ActionPreference>]
+ -ValidatePattern <String> [-Alias <String[]>] [-ValueFromPipeline]
  [<CommonParameters>]
 ```
 
@@ -47,7 +47,7 @@ New-DynamicParameter -Name <String> -ParameterType <Type> [-ParameterSetName <St
 ```
 New-DynamicParameter -Name <String> -ParameterType <Type> [-ParameterSetName <String>] [-Mandatory]
  [-Position <Int32>] [-ValueFromPipelineByPropertyName] [-HelpMessage <String>] [-ValidateNotNullOrEmpty]
- -ValidateRange <Int32[]> [-Alias <String[]>] [-ValueFromPipeline] [-ProgressAction <ActionPreference>]
+ -ValidateRange <Int32[]> [-Alias <String[]>] [-ValueFromPipeline]
  [<CommonParameters>]
 ```
 
@@ -55,7 +55,7 @@ New-DynamicParameter -Name <String> -ParameterType <Type> [-ParameterSetName <St
 ```
 New-DynamicParameter -Name <String> -ParameterType <Type> [-ParameterSetName <String>] [-Mandatory]
  [-Position <Int32>] [-ValueFromPipelineByPropertyName] [-HelpMessage <String>] [-ValidateNotNullOrEmpty]
- -ValidateLength <Int32[]> [-Alias <String[]>] [-ValueFromPipeline] [-ProgressAction <ActionPreference>]
+ -ValidateLength <Int32[]> [-Alias <String[]>] [-ValueFromPipeline]
  [<CommonParameters>]
 ```
 
@@ -385,21 +385,6 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
-Position: Named
-Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

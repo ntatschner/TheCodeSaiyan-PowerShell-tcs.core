@@ -16,7 +16,7 @@ Executes a script block with automatic retry logic on failure.
 Invoke-WithRetry [-ScriptBlock] <ScriptBlock> [[-MaxRetries] <Int32>] [[-DelaySeconds] <Double>]
  [[-BackoffMultiplier] <Double>] [[-MaxDelaySeconds] <Double>] [[-RetryableExceptions] <Type[]>]
  [[-OnRetry] <ScriptBlock>] [[-RetryOnStatusCode] <Int32[]>] [[-ShouldRetry] <ScriptBlock>]
- [[-JitterPercent] <Int32>] [-RetryOnNonTerminatingError] [-ProgressAction <ActionPreference>]
+ [[-JitterPercent] <Int32>] [-RetryOnNonTerminatingError]
  [<CommonParameters>]
 ```
 
@@ -287,21 +287,6 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
-Position: Named
-Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

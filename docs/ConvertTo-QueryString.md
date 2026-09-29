@@ -13,7 +13,7 @@ Converts a hashtable to a URL query string.
 ## SYNTAX
 
 ```
-ConvertTo-QueryString [-InputObject] <IDictionary> [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ConvertTo-QueryString [-InputObject] <IDictionary> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -62,21 +62,6 @@ Required: True
 Position: 1
 Default value: None
 Accept pipeline input: True (ByValue)
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
-Position: Named
-Default value: None
-Accept pipeline input: False
 Accept wildcard characters: False
 ```
 

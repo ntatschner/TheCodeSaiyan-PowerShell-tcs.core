@@ -14,7 +14,7 @@ Checks whether a newer version of a module is available in the PowerShell Galler
 
 ```
 Get-ModuleStatus [-ShowMessage] [-ModuleName] <String> [-ModulePath] <String> [[-CacheHours] <Int32>] [-Force]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -127,21 +127,6 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
-Position: Named
-Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

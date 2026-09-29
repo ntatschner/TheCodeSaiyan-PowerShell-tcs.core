@@ -16,7 +16,7 @@ Records anonymous usage telemetry for a command or module load.
 Invoke-TelemetryCollection [[-ModuleName] <String>] [[-ModuleVersion] <String>] [[-CommandName] <String>]
  [-ExecutionID] <String> [-Stage] <String> [[-Failed] <Boolean>] [[-Exception] <Object>] [-ClearTimer]
  [[-URI] <String>] [[-ApiKey] <String>] [[-Tags] <Hashtable>] [[-ModulePath] <String>] [-Minimal]
- [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -268,21 +268,6 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
-Accept pipeline input: False
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
-Position: Named
-Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

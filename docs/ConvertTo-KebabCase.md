@@ -13,7 +13,7 @@ Converts a string to kebab-case format.
 ## SYNTAX
 
 ```
-ConvertTo-KebabCase [-Value] <String> [-ProgressAction <ActionPreference>] [<CommonParameters>]
+ConvertTo-KebabCase [-Value] <String> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -60,21 +60,6 @@ Required: True
 Position: 1
 Default value: None
 Accept pipeline input: True (ByValue)
-Accept wildcard characters: False
-```
-
-### -ProgressAction
-{{ Fill ProgressAction Description }}
-
-```yaml
-Type: ActionPreference
-Parameter Sets: (All)
-Aliases: proga
-
-Required: False
-Position: Named
-Default value: None
-Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
